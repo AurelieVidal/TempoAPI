@@ -1,0 +1,32 @@
+openapi: "3.0.0"
+info:
+  title: Simple Greeting API
+  version: "1.0.0"
+  description: An API to generate personalized greetings.
+
+paths:
+  /greeting/{name}:
+    post:
+      operationId: app.post_greeting
+      summary: Generate a personalized greeting
+      description: Takes a name and a greeting query parameter to return a personalized greeting message.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The name of the person to greet
+          schema:
+            type: string
+        - name: greeting
+          in: query
+          required: true
+          description: The greeting message
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully generated greeting
+          content:
+            text/plain:
+              schema:
+                type: string
