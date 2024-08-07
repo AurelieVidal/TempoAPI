@@ -1,19 +1,35 @@
 from flask import Flask
-from connexion import FlaskApp
+from connexion import App
+import connexion
+import os
 
-#app = Flask(__name__)
-app = FlaskApp(__name__)
+# Initialisation de l'application Connexion avec Flask
 
-def post_greeting(name: str, greeting: str):  # Paramaeters are automatically unpacked
-    return f"{greeting} {name}", 200          # Responses are automatically serialized
+options = connexion.options.SwaggerUIOptions(
+    swagger_ui_path="/documentation"
+)
 
-app.add_api("swagger.yaml")
+connex_app = App(__name__, specification_dir='./', swagger_ui_options=options)
+app = connex_app.app
+if not os.environ.get('DATABASE'):
+    raise Exception("No env variable DATABASE")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE')
 
 
-# @app.route('/')
-def hello_world():  # put application's code here
+# Ajout de l'API via Swagger
+connex_app.add_api('swagger.yaml')
+
+# Route de test
+@app.route('/')
+def hello_world():
     return 'Hello World!'
 
+# Définir la fonction pour l'endpoint /greeting
+def post_greeting(body):
+    name = body.get('name')
+    greeting = body.get('greeting')
+    return f"{greeting} {name}", 200
 
+# Lancement de l'application
 if __name__ == '__main__':
-    app.run()
+    connex_app.run(port=5000)
