@@ -25,3 +25,20 @@ paths:
             application/json:
               schema:
                 type: string
+
+  /users:
+    get:
+      summary: Retrieve list of users
+      operationId: controllers.user_controller.get_users
+      responses:
+        '200':
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: string
