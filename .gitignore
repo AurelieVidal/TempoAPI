@@ -92,7 +92,6 @@ ENV/
 env.bak/
 env/
 venv.bak/
-venv/
 
 # Spyder project settings
 .spyderproject
@@ -116,3 +115,5 @@ dmypy.json
 .pytype/
 
 .idea/
+
+.idea

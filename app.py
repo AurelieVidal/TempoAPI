@@ -3,6 +3,8 @@ from connexion import App
 import connexion
 from extensions import db
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 # Initialize Connexion app with Flask
 options = connexion.options.SwaggerUIOptions(
@@ -19,22 +21,16 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE')
 
 # Initialize extentions
 db.init_app(app)
+engine = create_engine(os.environ.get('DATABASE'), echo=True)
+Session = sessionmaker(bind=engine, expire_on_commit=False)
 
 # Add the Swagger to the API
 connex_app.add_api('swagger.yaml')
 
-# Tests purposes
 # TODO : put an explanation of the project ?
 @app.route('/')
 def hello_world():
     return 'Hello World!'
-
-# Testing to create a route
-# TODO : remove
-def post_greeting(body):
-    name = body.get('name')
-    greeting = body.get('greeting')
-    return f"{greeting} {name}", 200
 
 # Launch the application on port 5000
 if __name__ == '__main__':

@@ -1,34 +1,11 @@
 openapi: 3.0.0
 info:
-  title: My API
-  version: '1.0'
+  title: Tempo API
+  version: '0.0'
 paths:
-  /greeting:
-    post:
-      summary: Post a greeting
-      operationId: app.post_greeting
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                greeting:
-                  type: string
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
-
   /users:
     get:
-      summary: Retrieve list of users
+      summary: Get the list of all users
       operationId: controllers.user_controller.get_users
       responses:
         '200':
@@ -36,9 +13,95 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  users:
-                    type: array
-                    items:
-                      type: string
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+      tags:
+        - Users
+    post:
+      summary: Create a user
+      operationId: controllers.user_controller.post_users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequestBody'
+      responses:
+        '200':
+          description: The created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Users
+  /users/{username}:
+    get:
+      summary: Retrieve a user by username
+      parameters:
+        - in: path
+          name: username
+          schema:
+            type: string
+          required: true
+          description: Username of the user
+      operationId: controllers.user_controller.get_user_by_username
+      responses:
+        '200':
+          description: Retrieve a user by username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      tags:
+        - Users
+tags:
+  - name: Users
+    description: Everything about users
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "failed"
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 23
+        username:
+          type: string
+          example: "aurelie"
+    UserRequestBody:
+      type: object
+      required:
+        - username
+        - password
+        - email
+      properties:
+        username:
+          type: string
+          example: "aurelie"
+        password:
+          type: string
+          example: "password"
+        email:
+          type: string
+          example: "example@fake.com"
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
