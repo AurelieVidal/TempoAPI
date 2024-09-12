@@ -1,4 +1,3 @@
-from flask import Flask
 import connexion
 from extensions import db
 import os
@@ -12,9 +11,8 @@ options = connexion.options.SwaggerUIOptions(
 )
 
 if not os.environ.get('DATABASE'):
-    raise Exception("No env variable DATABASE")
+    raise Exception("Environment variable DATABASE missing")
 
-#connex_app = connexion.App(__name__, specification_dir='./', swagger_ui_options=options)
 app = FlaskApp(__name__,  specification_dir='./', swagger_ui_options=options)
 
 # Configuration of the database
@@ -31,9 +29,13 @@ Session = sessionmaker(bind=engine, expire_on_commit=False)
 app.add_api('swagger.yaml')
 
 # Add routes
+# TODO : change : explanation of the project ?
+
+
 @app.route('/')
 def hello_world():
     return 'Hello World!'
+
 
 # Launch the application on port 5000
 if __name__ == '__main__':

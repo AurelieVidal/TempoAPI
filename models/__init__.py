@@ -1,5 +1,7 @@
 from app import db
-from .user import User
+from .user import User  # noqa: F401
+from .question import Question  # noqa: F401
+from .user_question import UserQuestion  # noqa: F401
 
-# Exposez le metadata des modèles via `Base`
+
 Base = db.Model

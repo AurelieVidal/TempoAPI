@@ -5,17 +5,26 @@ info:
 paths:
   /users:
     get:
-      summary: Get the list of all users
+      summary: Get all users
       operationId: controllers.user_controller.get_users
       responses:
         '200':
-          description: A list of users
+          description: The list of all users
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       tags:
         - Users
     post:
@@ -28,20 +37,26 @@ paths:
             schema:
               $ref: '#/components/schemas/UserRequestBody'
       responses:
-        '200':
+        '202':
           description: The created user
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: ""
+          description: Format error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: ""
+          description: Server Error
           content:
             application/json:
               schema:
@@ -61,16 +76,241 @@ paths:
       operationId: controllers.user_controller.get_user_by_username
       responses:
         '200':
-          description: Retrieve a user by username
+          description: The found user
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       tags:
         - Users
+  /users/{userId}/details:
+    get:
+      summary: Get details about a given user
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+          required: true
+          description: Id of the user
+      operationId: controllers.user_controller.get_user_details
+      responses:
+        '200':
+          description: Details of the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Users
+  /security/questions:
+    get:
+      summary: Get all security questions
+      operationId: controllers.security_controller.get_questions
+      responses:
+        '200':
+          description: The list of all security questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+    post:
+      summary: Create questions
+      operationId: controllers.security_controller.post_question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionsRequestBody'
+      responses:
+        '202':
+          description: The created questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+        '400':
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+  /security/question/{questionId}:
+    get:
+      summary: Retrieve a question by id
+      parameters:
+        - in: path
+          name: questionId
+          schema:
+            type: integer
+          required: true
+          description: Id of the question
+      operationId: controllers.security_controller.get_question_by_id
+      responses:
+        '200':
+          description: The question found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+    delete:
+      summary: Delete a question
+      parameters:
+        - in: path
+          name: questionId
+          schema:
+            type: integer
+          required: true
+          description: Id of the question
+      operationId: controllers.security_controller.delete_question
+      responses:
+        '200':
+          description: The deleted question
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+  /security/question/{question}:
+    get:
+      summary: Retrieve a question by question
+      parameters:
+        - in: path
+          name: question
+          schema:
+            type: string
+          required: true
+          description: Question
+      operationId: controllers.security_controller.get_question_by_question
+      responses:
+        '200':
+          description: The question found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+  /security/question/random/{number}:
+    get:
+      summary: Get a list of random questions
+      parameters:
+        - in: path
+          name: number
+          schema:
+            type: integer
+          required: true
+          description: The number of questions
+      operationId: controllers.security_controller.get_random_list
+      responses:
+        '200':
+          description: The list of random questions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Question'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
 tags:
   - name: Users
     description: Everything about users
+  - name: Security
+    description: Everything used for security purposes
 components:
   schemas:
     Error:
@@ -88,12 +328,38 @@ components:
         username:
           type: string
           example: "aurelie"
+        email:
+          type: string
+          example: "example@fake.com"
+    UserDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 23
+        username:
+          type: string
+          example: "aurelie"
+        email:
+          type: string
+          example: "example@fake.com"
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+        devices:
+          type: array
+          items:
+            type: string
+            example: "iphone"
     UserRequestBody:
       type: object
       required:
         - username
         - password
         - email
+        - questions
+        - device
       properties:
         username:
           type: string
@@ -105,3 +371,38 @@ components:
           type: string
           example: "example@fake.com"
           pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserQuestionsRequestBody'
+        device:
+          type: string
+          example: "iphone"
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 23
+        question:
+          type: string
+          example: "What's your pet's name ?"
+    QuestionsRequestBody:
+      type: object
+      required:
+        - questions
+      properties:
+        questions:
+          type: array
+          items:
+            type: string
+          example: [ "What is your favorite color?", "What is your favorite season?" ]
+    UserQuestionsRequestBody:
+      type: object
+      properties:
+        questionId:
+          type: integer
+          example: 3
+        response:
+          type: string
+          example: "blue"
