@@ -62,7 +62,7 @@ def patch_user(**kwargs):
         }
         return {"users": output}, 200
 
-    output = update(id, StatusEnum.READY.value)
+    output = update(id, status)
     if not output:
         return {"message": f"User {id} not found"}, 404
 

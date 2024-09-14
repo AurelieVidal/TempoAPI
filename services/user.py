@@ -3,7 +3,7 @@ from models.user import User, StatusEnum
 from models.question import Question
 from models.user_question import UserQuestion
 import json
-
+from sqlalchemy import update
 
 def user_list():
     """ Get the list of all users """
@@ -122,13 +122,16 @@ def update(
     """ Update a user """
 
     with session_scope() as session:
-        query = session.query(User)
-        query = query.filter(User.id == id)
-        user = query.first()
+        (
+            session.query(User)
+            .filter(User.id == id)
+            .update({'status': status})
+        )
+        session.commit()
+
+        user = session.query(User).filter(User.id == id)
         if not user:
             return
-        user.status = status
-        session.commit()
 
         return {
             "id": user.id,
