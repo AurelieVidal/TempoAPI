@@ -29,11 +29,7 @@ def get_by_username(username):
 
     with session_scope() as session:
         query = session.query(User)
-        query = (
-            query
-            .filter(User.username == username)
-            .filter(User.status == StatusEnum.READY)
-        )
+        query = query.filter(User.username == username)
         user = query.first()
         if not user:
             return
