@@ -1,5 +1,5 @@
 from . import session_scope
-from models.user import User
+from models.user import User, StatusEnum
 from models.question import Question
 from models.user_question import UserQuestion
 import json
@@ -9,7 +9,7 @@ def user_list():
     """ Get the list of all users """
 
     with session_scope() as session:
-        query = session.query(User)
+        query = session.query(User).filter(User.status == StatusEnum.READY)
 
         output = []
         for item in query.all():
@@ -29,7 +29,11 @@ def get_by_username(username):
 
     with session_scope() as session:
         query = session.query(User)
-        query = query.filter(User.username == username)
+        query = (
+            query
+            .filter(User.username == username)
+            .filter(User.status == StatusEnum.READY)
+        )
         user = query.first()
         if not user:
             return
@@ -51,6 +55,7 @@ def get_details(id: int):
                 User.username,
                 User.email,
                 User.devices,
+                User.status,
                 Question.question,
                 Question.id.label("question_id")
             )
@@ -77,7 +82,8 @@ def get_details(id: int):
             "username": user.username,
             "email": user.email,
             "questions": questions,
-            "devices": devices
+            "devices": devices,
+            "status": user.status.value
         }
 
 
@@ -96,7 +102,8 @@ def create(
             email=email,
             password=password,
             salt=salt,
-            devices=f'["{device}"]'
+            devices=f'["{device}"]',
+            status="CREATING"
         )
         session.add(new_user)
         session.commit()
@@ -105,6 +112,28 @@ def create(
             "id": new_user.id,
             "username": new_user.username,
             "email": new_user.email,
+        }
+
+
+def update(
+        id: int,
+        status: str
+):
+    """ Update a user """
+
+    with session_scope() as session:
+        query = session.query(User)
+        query = query.filter(User.id == id)
+        user = query.first()
+        if not user:
+            return
+        user.status = status
+        session.commit()
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
         }
 
 

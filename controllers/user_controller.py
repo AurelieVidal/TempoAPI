@@ -3,9 +3,11 @@ from services.user import (
     create,
     get_by_username,
     get_details,
-    add_question_to_user
+    add_question_to_user,
+    update
 )
 from services.question import get_by_id
+from models.user import StatusEnum
 import random
 import re
 import hashlib
@@ -40,6 +42,29 @@ def get_user_details(**kwargs):
     output = get_details(id)
     if not output:
         return {"message": f"User {id} not found or incomplete"}, 400
+
+    return {"users": output}, 200
+
+
+def patch_user(**kwargs):
+    """ Update a a user """
+
+    id = kwargs.get("userId")
+    payload = kwargs.get("body")
+    status = payload.get("status")
+
+    if not status:
+        user = get_details(id)
+        output = {
+            "id": id,
+            "username": user.get("username"),
+            "email": user.get("email")
+        }
+        return {"users": output}, 200
+
+    output = update(id, StatusEnum.READY.value)
+    if not output:
+        return {"message": f"User {id} not found"}, 404
 
     return {"users": output}, 200
 

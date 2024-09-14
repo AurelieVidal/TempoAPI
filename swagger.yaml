@@ -127,6 +127,44 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Users
+  /users/{userId}:
+    patch:
+      summary: Update a user
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+          required: true
+          description: Id of the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatchRequestBody'
+      operationId: controllers.user_controller.patch_user
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Users
   /security/questions:
     get:
       summary: Get all security questions
@@ -352,6 +390,9 @@ components:
           items:
             type: string
             example: "iphone"
+        status:
+          type: string
+          example: "READY"
     UserRequestBody:
       type: object
       required:
@@ -378,6 +419,16 @@ components:
         device:
           type: string
           example: "iphone"
+    UserPatchRequestBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - "CREATING"
+            - "READY"
+            - "DELETED"
+          example: "READY"
     Question:
       type: object
       properties:

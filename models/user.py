@@ -1,4 +1,11 @@
 from app import db
+import enum
+
+
+class StatusEnum(enum.Enum):
+    CREATING = "CREATING"
+    READY = "READY"
+    DELETED = "DELETED"
 
 
 class User(db.Model):
@@ -8,5 +15,10 @@ class User(db.Model):
     password = db.Column(db.String, nullable=False)
     salt = db.Column(db.String, nullable=False)
     devices = db.Column(db.String, nullable=False,  default="[]")
+    status = db.Column(
+        db.Enum(StatusEnum),
+        nullable=False,
+        default=StatusEnum.CREATING
+    )
 
     questions = db.relationship('UserQuestion', backref='user')
