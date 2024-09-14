@@ -129,7 +129,7 @@ def update(
         )
         session.commit()
 
-        user = session.query(User).filter(User.id == id)
+        user = session.query(User).filter(User.id == id).first()
         if not user:
             return
 
