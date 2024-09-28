@@ -1,0 +1,28 @@
+{% extends "base_template.html" %}
+
+{% block title %}Email Validé{% endblock %}
+
+{% block main %}
+    <h2>Ton email est validé&nbsp;!</h2>
+    <p>
+        Il ne reste plus qu’à valider ton numéro de téléphone et tu pourras profiter pleinement de Tempo&nbsp;!
+        <br/>
+        Nous venons de t’envoyer un SMS avec un code, renseigne-le ici&nbsp;:
+    </p>
+
+    <div class="input_form">
+        <form id="smsForm">
+            <input type="hidden" id="userId" value="{{ user_id }}" >
+            <input type="text" id="inputCode" maxlength="6">
+            <button type="submit">Valider</button>
+        </form>
+        <p class="error" id="error-message">Attention, tu n'a pas renseigné le code...</p>
+    </div>
+
+    <div class="resend">
+        <p class="resend_message">Tu n'a rien reçu sur ton télephone ?</p>
+        <input type="hidden" id="userId" value="{{ user_id }}" >
+        <button id="resend_button" class="resend_phonebutton" type="submit">Me renvoyer un code</button>
+    </div>
+
+{% endblock %}

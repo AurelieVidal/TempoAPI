@@ -5,7 +5,11 @@ from sqlalchemy import func
 
 
 def create(question: str):
-    """ Create a question """
+    """
+    Create a question
+    :param question: The question to create
+    :return: The created question
+    """
 
     with session_scope() as session:
         new_question = Question(
@@ -21,7 +25,10 @@ def create(question: str):
 
 
 def all_questions():
-    """ Get the list of all questions """
+    """
+    Get the list of all questions
+    :return: The list of all questions
+    """
 
     with session_scope() as session:
         query = session.query(Question)
@@ -39,7 +46,11 @@ def all_questions():
 
 
 def get_by_id(id: int):
-    """ Get question by id """
+    """
+    Get question by id
+    :param id: ID of the question
+    :return: The corresponding question
+    """
 
     with session_scope() as session:
         query = session.query(Question).filter(Question.id == id)
@@ -55,7 +66,11 @@ def get_by_id(id: int):
 
 
 def get_by_question(question: str):
-    """ Get question by question """
+    """
+    Get question by question
+    :param question: The question
+    :return: The corresponding question
+    """
 
     with session_scope() as session:
         query = session.query(Question).filter(Question.question == question)
@@ -71,7 +86,11 @@ def get_by_question(question: str):
 
 
 def get_by_question_id(questionId: str):
-    """ Get users which have the related questionId """
+    """
+    Get users which have the related questionId
+    :param questionId: ID if the question
+    :return: The list of users which have responded to the question
+    """
 
     with session_scope() as session:
         query = (
@@ -89,7 +108,11 @@ def get_by_question_id(questionId: str):
 
 
 def get_random_questions(number: int):
-    """ Get a list of random questions """
+    """
+    Get a list of random questions
+    :param number: The length of the list
+    :return: A list of <number> random questions
+    """
 
     with session_scope() as session:
         query = session.query(Question).order_by(func.random()).limit(number)
@@ -107,7 +130,11 @@ def get_random_questions(number: int):
 
 
 def delete(question_id: int):
-    """ Delete a question """
+    """
+    Delete a question
+    :param question_id: ID to delete
+    :return: The deleted question
+    """
 
     with session_scope() as session:
         question_to_delete = (
@@ -128,7 +155,11 @@ def delete(question_id: int):
 
 
 def delete_user_question(question_id: int):
-    """ Delete a user_question relationship """
+    """
+    Delete a user_question relationship
+    :param question_id: question ID of the relationships we want to delete
+    :return: Delete the relationshipx
+    """
     with session_scope() as session:
         relationships_to_delete = (
             session.query(UserQuestion)

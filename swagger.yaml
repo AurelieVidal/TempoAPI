@@ -344,6 +344,41 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Security
+  /security/resend-email/{username}:
+    post:
+      summary: Get a list of random questions
+      parameters:
+        - in: path
+          name: username
+          schema:
+            type: string
+          required: true
+          description: The number of questions
+      operationId: controllers.security_controller.resend_email
+      responses:
+        '200':
+          description: The list of random questions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SuccessMassage'
+            text/html:
+              schema:
+                type: string
+                example: "<html><body><h1>Email resent</h1></body></html>"
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
 tags:
   - name: Users
     description: Everything about users
@@ -408,6 +443,9 @@ components:
         password:
           type: string
           example: "password"
+        phone:
+          type: string
+          example: "+33102030405"
         email:
           type: string
           example: "example@fake.com"
@@ -438,6 +476,12 @@ components:
         question:
           type: string
           example: "What's your pet's name ?"
+    SuccessMassage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Email has been resend"
     QuestionsRequestBody:
       type: object
       required:

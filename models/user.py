@@ -4,6 +4,8 @@ import enum
 
 class StatusEnum(enum.Enum):
     CREATING = "CREATING"
+    CHECKING_EMAIL = "CHECKING_EMAIL"
+    CHECKING_PHONE = "CHECKING_PHONE"
     READY = "READY"
     DELETED = "DELETED"
 
@@ -14,6 +16,7 @@ class User(db.Model):
     email = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
     salt = db.Column(db.String, nullable=False)
+    phone = db.Column(db.String, nullable=False)
     devices = db.Column(db.String, nullable=False,  default="[]")
     status = db.Column(
         db.Enum(StatusEnum),

@@ -1,0 +1,15 @@
+{% extends "base_template.html" %}
+
+{% block title %}Renvoyer Email{% endblock %}
+
+{% block main %}
+
+    <h1>Oups...</h1>
+    <p>Le lien sur lequel tu as cliqué est expiré ou invalide 😥 <br/> <br/>
+        Appuie sur ce bouton pour qu’on te renvoie un email de vérification</p>
+
+    <form action="{{ action }}" method="post">
+        <button type="submit">Me renvoyer un mail</button>
+    </form>
+
+{% endblock %}

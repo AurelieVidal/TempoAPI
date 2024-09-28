@@ -1,0 +1,28 @@
+{% extends "base_template.html" %}
+
+{% block title %}Renvoyer Email{% endblock %}
+
+{% block main %}
+
+    <h2>Code incorrect</h2>
+    <p>
+        Le code que tu as renseigné n'est pas correct ... 😯 <br>
+        Réessaye ici :
+    </p>
+
+    <div class="input_form">
+        <form id="smsForm">
+            <input type="hidden" id="userId" value="{{ user_id }}" >
+            <input type="text" id="inputCode" maxlength="6">
+            <button type="submit">Valider</button>
+        </form>
+        <p class="resend_message" id="error-message">Attention, tu n'a pas renseigné le code...</p>
+    </div>
+
+    <div class="resend">
+        <p class="resend_message">Tu n'a rien reçu sur ton télephone ?</p>
+        <input type="hidden" id="userId" value="{{ user_id }}" >
+        <button id="resend_button" class="resend_phonebutton" type="submit">Me renvoyer un code</button>
+    </div>
+
+{% endblock %}

@@ -3,10 +3,13 @@ from models.user import User, StatusEnum
 from models.question import Question
 from models.user_question import UserQuestion
 import json
-from sqlalchemy import update
+
 
 def user_list():
-    """ Get the list of all users """
+    """
+    Get the list of all users
+    :return: The list of all users
+    """
 
     with session_scope() as session:
         query = session.query(User).filter(User.status == StatusEnum.READY)
@@ -25,7 +28,11 @@ def user_list():
 
 
 def get_by_username(username):
-    """ Get user by username """
+    """
+    Get user by username
+    :param username: The username we search
+    :return: The corresponding user
+    """
 
     with session_scope() as session:
         query = session.query(User)
@@ -41,8 +48,36 @@ def get_by_username(username):
         }
 
 
+def get_by_username_phone(username):
+    """
+    Get user by username with phone details
+    :param username: The username we search
+    :return: The corresponding user
+    """
+
+    with session_scope() as session:
+        query = session.query(User)
+        query = query.filter(User.username == username)
+        user = query.first()
+        if not user:
+            return
+
+        print("EMAIL", user.email)
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "phone": user.phone,
+            "email": user.email
+        }
+
+
 def get_details(id: int):
-    """ Get details about a user """
+    """
+    Get details about a user
+    :param id: ID of the user
+    :return: A dict with all information about the user
+    """
 
     with session_scope() as session:
         query = (
@@ -52,6 +87,7 @@ def get_details(id: int):
                 User.email,
                 User.devices,
                 User.status,
+                User.phone,
                 Question.question,
                 Question.id.label("question_id")
             )
@@ -79,7 +115,8 @@ def get_details(id: int):
             "email": user.email,
             "questions": questions,
             "devices": devices,
-            "status": user.status.value
+            "status": user.status.value,
+            "phone": user.phone,
         }
 
 
@@ -88,9 +125,19 @@ def create(
         email: str,
         password: str,
         salt: str,
-        device: str
+        device: str,
+        phone: str
 ):
-    """ Create a user """
+    """
+    Create a user
+    :param username: Username chosen by the user
+    :param email: Email of the user
+    :param password: Password of the user
+    :param salt: Generated char sequence associated to the user
+    :param device: Detected device of the user
+    :param phone: Phone number of the user (should be international format)
+    :return: The created user
+    """
 
     with session_scope() as session:
         new_user = User(
@@ -99,7 +146,8 @@ def create(
             password=password,
             salt=salt,
             devices=f'["{device}"]',
-            status="CREATING"
+            status=StatusEnum.CHECKING_EMAIL,
+            phone=phone
         )
         session.add(new_user)
         session.commit()
@@ -115,7 +163,12 @@ def update(
         id: int,
         status: str
 ):
-    """ Update a user """
+    """
+    Update a user
+    :param id: ID of the user
+    :param status: new status of the user
+    :return: The updated user
+    """
 
     with session_scope() as session:
         (
@@ -137,6 +190,13 @@ def update(
 
 
 def add_question_to_user(user_id: int, question_id: int, response: str):
+    """
+    Associate a question to a user
+    :param user_id: ID of the user
+    :param question_id: ID of the question
+    :param response: answer of the user to the question
+    :return: associate the question to the user
+    """
     """ Associate a question to a user """
 
     with session_scope() as session:

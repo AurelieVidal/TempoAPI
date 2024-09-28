@@ -7,17 +7,19 @@ from services.user import (
     update
 )
 from services.question import get_by_id
-from models.user import StatusEnum
 import random
 import re
 import hashlib
 import os
-import requests
-from retry import retry
+from utils.utils import handle_email, call_to_api
 
 
 def get_users(**kwargs):
-    """ Get the list of all users """
+    """
+    Get the list of all users
+    :param kwargs: unused
+    :return: The list of all users
+    """
 
     output = user_list()
 
@@ -25,7 +27,12 @@ def get_users(**kwargs):
 
 
 def get_user_by_username(**kwargs):
-    """ Retrieve a user by username """
+    """
+    Retrieve a user by username
+    :param kwargs: A dict which contains the username
+    :keyword username: username of the user we search
+    :return: The corresponding user
+    """
 
     username = kwargs.get("username")
 
@@ -35,7 +42,12 @@ def get_user_by_username(**kwargs):
 
 
 def get_user_details(**kwargs):
-    """ Get details of a user """
+    """
+    Get details of a user
+    :param kwargs: A dict which contains the user ID
+    :keyword userId: ID of the user
+    :return: All detail information about a user
+    """
 
     id = kwargs.get("userId")
 
@@ -47,7 +59,16 @@ def get_user_details(**kwargs):
 
 
 def patch_user(**kwargs):
-    """ Update a a user """
+    """
+    Update a user's status or details.
+
+    :param kwargs: A dict which contains id of the user and
+    information to change
+    :keyword userId: The ID of the user
+    :keyword body.status: The updated status of the user
+    :return: The updated user
+
+    """
 
     id = kwargs.get("userId")
     payload = kwargs.get("body")
@@ -70,7 +91,18 @@ def patch_user(**kwargs):
 
 
 def post_users(**kwargs):
-    """ Create a user """
+    """
+    Create a user
+    :param kwargs: A dict which contains all information to create a user
+    :keyword body.username: The chosen username
+    :keyword body.email: The email of the user
+    :keyword body.password: The password chosen by the user
+    :keyword body.questions: The list of security questions answered
+    by the user : questionId and response
+    :keyword body.device: The device used by the user to create his account
+    :keyword body.phone: The phone number of the user
+    :return: The created user
+    """
 
     payload = kwargs.get("body")
     username = payload.get("username")
@@ -78,6 +110,7 @@ def post_users(**kwargs):
     password = payload.get("password")
     questions = payload.get("questions")
     device = payload.get("device")
+    phone = payload.get("phone")
 
     # Check if questions exists
     for question in questions:
@@ -180,9 +213,11 @@ def post_users(**kwargs):
         email=email,
         password=password,
         salt=salt,
-        device=device
+        device=device,
+        phone=phone
     )
 
+    # Associate questions to the user
     user_id = output.get("id")
     for question in questions:
         question_id = question.get("questionId")
@@ -196,11 +231,24 @@ def post_users(**kwargs):
             response=response
         )
 
+    # Send the verification email
+    try:
+        handle_email(user_email=email, username=username, user_id=user_id)
+    except Exception:
+        return {
+            "message": "Verification email cannot be send"
+        }, 400
+
     return {"users": output}, 202
 
 
-def get_user_info(username, email):
-    """ Returns a set of potential user information. """
+def get_user_info(username: str, email: str):
+    """
+    Returns a set of potential user information
+    :param username: username of the user
+    :param email: email of the user
+    :return: A set containing substring found with user information
+    """
 
     email_first_part = email.split('@')[0].split('.')
     email_second_part = email.split('@')[1].split('.')[0]
@@ -219,18 +267,10 @@ def get_user_info(username, email):
 
 
 def generate_substrings(word):
-    """ Generate substrings of a word. """
+    """
+    Generate substrings from a word
+    :param word: string we want the substrings of
+    :return: substring with more than 4 letters of the word
+    """
 
     return [word[0:j+1].lower() for j in range(4 - 1, len(word))]
-
-
-@retry(requests.RequestException, tries=5, delay=2)
-def call_to_api(url):
-    """ Call to API """
-
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.RequestException:
-        return
-    return response

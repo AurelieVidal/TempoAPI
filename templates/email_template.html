@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Responsive</title>
+    <style>
+        body {
+            font-family: "Kanit", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            width: 100%;
+        }
+        .maincontainer {
+            background-color: #FFF5FE;
+            width: 90%; /* Prend 90% de la largeur de l'écran */
+            max-width: 600px; /* Limite à 600px sur grands écrans */
+            margin: 20px auto;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box; /* Gère correctement le padding et la largeur */
+            border: 2px solid #ffc8fe;
+        }
+        .band {
+            display: block;
+            padding: 10px 0;
+            text-align: center;
+            line-height: 0; /* Retire les espaces blancs */
+        }
+        .square {
+            display: inline-block;
+            border-radius: 10%;
+            margin: 5px;
+            vertical-align: middle;
+        }
+        .big {
+            height: 10vw; /* Ajuste la taille des carrés par rapport à la largeur de la fenêtre */
+            width: 10vw;
+            max-width: 40px; /* Limite la taille sur les écrans très larges */
+            max-height: 40px;
+        }
+        .small {
+            height: 8vw;
+            width: 8vw;
+            max-width: 30px;
+            max-height: 30px;
+        }
+        .pink {
+            background-color: #EA65F0;
+        }
+        .purple {
+            background-color: #BC64EF;
+        }
+        .blue {
+            background-color: #6568F0;
+        }
+        .red {
+            background-color: #F065A6;
+        }
+        .darkpurple {
+            background-color: #8F65F0;
+        }
+        .content {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .title {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .buttondiv {
+            margin: 20px 0;
+        }
+        .button {
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px; /* Ajuste la taille du texte au petit écran */
+            max-font-size: 16px;
+            padding: 10px 20px;
+            border: 2px solid #6568F0;
+            background-color: white;
+            color: #6568F0;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #6568F0;
+            color: white;
+        }
+        .footer {
+            font-size: 12px;
+            max-font-size: 12px;
+            color: #999;
+            text-align: center;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="maincontainer">
+    <div class="band">
+        <span class="square pink big"></span>
+        <span class="square purple small"></span>
+        <span class="square blue big"></span>
+        <span class="square red small"></span>
+        <span class="square darkpurple big"></span>
+    </div>
+
+    <div class="content">
+        <p class="title">Confirme ton inscription !</p>
+        <p>Hello {{ username }}, <br/><br/>
+            Merci de t’être inscrit(e) à Tempo ! Pour vérifier ton adresse email, clique sur le bouton ci-dessous :
+        </p>
+
+        <div class="buttondiv">
+            <a href="{{  buttonlink }}" class="button">Confirmer mon email</a>
+        </div>
+
+        <p>Si tu n’as pas créé de compte, ignore cet email.<br/>
+            À bientôt sur Tempo !<br/>L’équipe Tempo 😊</p>
+    </div>
+
+    <div class="band">
+        <span class="square purple small"></span>
+        <span class="square pink big"></span>
+        <span class="square darkpurple small"></span>
+        <span class="square red big"></span>
+        <span class="square blue small"></span>
+    </div>
+</div>
+
+<div class="footer">
+    © 2024 Tempo. Tous droits réservés.
+</div>
+</body>
+</html>
