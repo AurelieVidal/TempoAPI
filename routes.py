@@ -22,6 +22,9 @@ def check_mail(token):
     user_id = request.args.get("user_id")
     details_user = get_details(int(user_id))
 
+    print("USERID", user_id)
+    print("DETAILS", details_user)
+
     # If we are checking the mail of the user
     if details_user.get('status') == StatusEnum.CHECKING_EMAIL.value:
         email = confirm_token(token)
@@ -32,16 +35,18 @@ def check_mail(token):
     # If the email has been checked and user didn't receive any text with
     # a code to check the phone
     elif details_user.get('status') == StatusEnum.CHECKING_PHONE.value:
+        print("in checking if")
         email = details_user.get('email')
         username = details_user.get("username")
 
     # If the user is already validated or doesn't have an appropriate status
     else:
         return render_template("error_template.html")
-
+    print("EMAIL", email)
     # If email has been validated
     if email:
         try:
+            print("in try")
             update(int(user_id), StatusEnum.CHECKING_PHONE.value)
             handle_phone_number(phone=details_user.get("phone"))
             return render_template(

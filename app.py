@@ -28,8 +28,8 @@ app.app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE')
 
 # Initialize extensions
 db.init_app(app.app)
-engine = create_engine(os.environ.get('DATABASE'), echo=True)
-Session = sessionmaker(bind=engine, expire_on_commit=False)
+# engine = create_engine(os.environ.get('DATABASE'), echo=True)
+# Session = sessionmaker(bind=engine, expire_on_commit=False)
 
 # Add the Swagger to the API
 app.add_api('swagger.yaml')

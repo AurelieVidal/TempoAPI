@@ -48,30 +48,6 @@ def get_by_username(username):
         }
 
 
-def get_by_username_phone(username):
-    """
-    Get user by username with phone details
-    :param username: The username we search
-    :return: The corresponding user
-    """
-
-    with session_scope() as session:
-        query = session.query(User)
-        query = query.filter(User.username == username)
-        user = query.first()
-        if not user:
-            return
-
-        print("EMAIL", user.email)
-
-        return {
-            "id": user.id,
-            "username": user.username,
-            "phone": user.phone,
-            "email": user.email
-        }
-
-
 def get_details(id: int):
     """
     Get details about a user

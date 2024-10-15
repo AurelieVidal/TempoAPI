@@ -22,6 +22,8 @@ def get_users(**kwargs):
     """
 
     output = user_list()
+    if not output:
+        output = []
 
     return {"users": output}, 200
 
@@ -35,10 +37,14 @@ def get_user_by_username(**kwargs):
     """
 
     username = kwargs.get("username")
+    if not username:
+        return {"message": "Input error, username is not defined"}, 400
 
     output = get_by_username(username)
+    if not output:
+        return {"message": f"Username '{username}' not found"}, 404
 
-    return {"users": output}, 200
+    return {"user": output}, 200
 
 
 def get_user_details(**kwargs):
@@ -50,12 +56,14 @@ def get_user_details(**kwargs):
     """
 
     id = kwargs.get("userId")
+    if not id:
+        return {"message": "Input error, userId is not defined"}, 400
 
     output = get_details(id)
     if not output:
-        return {"message": f"User {id} not found or incomplete"}, 400
+        return {"message": f"User {id} not found or incomplete"}, 404
 
-    return {"users": output}, 200
+    return {"user": output}, 200
 
 
 def patch_user(**kwargs):
@@ -72,8 +80,12 @@ def patch_user(**kwargs):
 
     id = kwargs.get("userId")
     payload = kwargs.get("body")
-    status = payload.get("status")
+    if not id:
+        return {"message": "Input error, userId is not defined"}, 400
+    if not payload:
+        return {"message": "Input error, body is not defined"}, 400
 
+    status = payload.get("status")
     if not status:
         user = get_details(id)
         output = {
@@ -81,13 +93,13 @@ def patch_user(**kwargs):
             "username": user.get("username"),
             "email": user.get("email")
         }
-        return {"users": output}, 200
+        return {"user": output}, 200
 
     output = update(id, status)
     if not output:
         return {"message": f"User {id} not found"}, 404
 
-    return {"users": output}, 200
+    return {"user": output}, 200
 
 
 def post_users(**kwargs):
@@ -105,16 +117,37 @@ def post_users(**kwargs):
     """
 
     payload = kwargs.get("body")
+    if not payload:
+        return {"message": "Input error, body is not defined"}, 400
+
     username = payload.get("username")
     email = payload.get("email")
     password = payload.get("password")
     questions = payload.get("questions")
     device = payload.get("device")
     phone = payload.get("phone")
+    if not username:
+        return {"message": "Input error, username is not defined"}, 400
+    if not email:
+        return {"message": "Input error, email is not defined"}, 400
+    if not password:
+        return {"message": "Input error, password is not defined"}, 400
+    if not questions:
+        return {"message": "Input error, questions is not defined"}, 400
+    if not device:
+        return {"message": "Input error, device is not defined"}, 400
+    if not phone:
+        return {"message": "Input error, phone is not defined"}, 400
 
     # Check if questions exists
     for question in questions:
         question_id = question.get("questionId")
+        response = question.get("response")
+        if not question_id:
+            return {"message": "Input error, questionId is not defined"}, 400
+        if not response:
+            return {"message": "Input error, response is not defined"}, 400
+
         if not get_by_id(question_id):
             return {"message": f"Question {question_id} not found"}, 400
 
@@ -164,7 +197,7 @@ def post_users(**kwargs):
                 "and a lowercase letter."
             )
         }, 400
-
+    print("password is compliant")
     # Checking is password contains user information
     checking_list = get_user_info(username, email)
     for item in checking_list:
@@ -181,15 +214,21 @@ def post_users(**kwargs):
     )
     hash_beginning = hashed_password[0:5]
     hash_end = hashed_password[5:]
+    print("HASH END")
+    print(hash_end)
     hipb_url = os.environ.get("HIPB_API_URL") + hash_beginning
-
+    print(os.environ.get("HIPB_API_URL"))
     response = call_to_api(hipb_url)
     if not response:
         return {
             "message": "Password checking feature is unavailable."
         }, 500
+    print(response)
+    print(response.text)
     response = response.text.splitlines()
+    print(response)
     for line in response:
+        print("LINE", line)
         if line.split(":")[0] == hash_end:
             return {"message": "Password is too weak."}, 400
 
@@ -205,6 +244,7 @@ def post_users(**kwargs):
     # Hash the password
     pepper = os.environ.get("PEPPER")
     password = pepper + password + salt
+    print(password)
     password = hashlib.sha256(password.encode("utf-8")).hexdigest().upper()
 
     # Create the user
@@ -239,7 +279,7 @@ def post_users(**kwargs):
             "message": "Verification email cannot be send"
         }, 400
 
-    return {"users": output}, 202
+    return {"user": output}, 202
 
 
 def get_user_info(username: str, email: str):

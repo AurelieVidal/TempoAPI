@@ -85,7 +85,7 @@ def get_by_question(question: str):
         }
 
 
-def get_by_question_id(questionId: str):
+def get_by_question_id(questionId: int):
     """
     Get users which have the related questionId
     :param questionId: ID if the question
@@ -163,7 +163,7 @@ def delete_user_question(question_id: int):
     with session_scope() as session:
         relationships_to_delete = (
             session.query(UserQuestion)
-            .filter(UserQuestion == question_id)
+            .filter(UserQuestion.question_id == question_id)
         )
 
         for relationship in relationships_to_delete.all():
