@@ -8,7 +8,11 @@ all: test
 
 # Cible pour exécuter les tests avec couverture
 test:
-	DATABASE=sqlite:///:memory: $(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
+	DATABASE=sqlite:///:memory: \
+	MAIL_USERNAME=fake@example.com \
+	MAIL_PASSWORD=fakepassword \
+	SESSION_SECRET_KEY=fakesecretkey \
+	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
 
 # Cible pour vérifier la qualité du code avec Flake8
 flake:
