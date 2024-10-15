@@ -41,3 +41,24 @@ jobs:
     - name: Lint with flake8
       run: |
         make flake
+
+      # 5. Vérifier la qualité du code avec Flake8
+    - name: Black
+      run: |
+        make black-check
+
+    - name: Isort
+      run: |
+        make isort-check
+
+    - name: Mypy
+      run: |
+        make mypy
+
+    - name: Bandit
+      run: |
+        make bandit
+
+    - name: Safety
+      run: |
+        make safety
