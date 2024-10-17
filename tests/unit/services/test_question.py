@@ -1,15 +1,10 @@
-from services.question import (
-    create,
-    all_questions,
-    get_by_id,
-    get_by_question,
-    get_by_question_id, get_random_questions,
-    delete,
-    delete_user_question
-)
 from models.question import Question
 from models.user import User
 from models.user_question import UserQuestion
+from services.question import (all_questions, create, delete,
+                               delete_user_question, get_by_id,
+                               get_by_question, get_by_question_id,
+                               get_random_questions)
 
 
 class TestCreate:

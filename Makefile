@@ -21,13 +21,6 @@ flake:
 test-flake:
 	$(FLAKE8) --exclude=venv . && DATABASE=sqlite:///:memory: $(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
 
-# Cible pour formater le code avec Black
-black:
-	black . --exclude venv
-
-# Cible pour vérifier le format du code avec Black
-black-check:
-	black --check . --exclude venv
 
 # Cible pour vérifier l'ordre des imports avec isort
 isort-check:
@@ -74,8 +67,6 @@ help:
 	@echo "  make test         - Run the tests with coverage"
 	@echo "  make flake        - Run Flake8 for code quality"
 	@echo "  make test-flake   - Run both tests and Flake8"
-	@echo "  make black        - Auto-format code using Black"
-	@echo "  make black-check  - Check if code is formatted with Black"
 	@echo "  make isort        - Auto-fix import order with isort"
 	@echo "  make isort-check  - Check import order with isort"
 	@echo "  make mypy         - Check types using Mypy"

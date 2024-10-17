@@ -1,7 +1,8 @@
 import pytest
+from sqlalchemy.orm import scoped_session, sessionmaker
+
 from app import app
 from extensions import db
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 @pytest.fixture(scope='module')

@@ -1,13 +1,11 @@
 import os
-import pytest
 from unittest.mock import patch
-from utils.utils import (
-    handle_email,
-    generate_confirmation_token,
-    call_to_api
-)
-from flask_mail import Message
+
+import pytest
 import requests
+from flask_mail import Message
+
+from utils.utils import call_to_api, generate_confirmation_token, handle_email
 
 
 @pytest.mark.usefixtures("session")

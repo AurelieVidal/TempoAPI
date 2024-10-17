@@ -1,14 +1,8 @@
-from services.user import (
-    user_list,
-    get_by_username,
-    get_details,
-    create,
-    update,
-    add_question_to_user
-)
 from models.question import Question
-from models.user import User, StatusEnum
+from models.user import StatusEnum, User
 from models.user_question import UserQuestion
+from services.user import (add_question_to_user, create, get_by_username,
+                           get_details, update, user_list)
 
 
 class TestUserList:

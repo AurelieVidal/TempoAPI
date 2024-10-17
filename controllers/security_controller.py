@@ -1,17 +1,13 @@
-from services.question import (
-    create,
-    all_questions,
-    get_by_id,
-    get_random_questions,
-    delete,
-    get_by_question,
-    get_by_question_id,
-    delete_user_question
-)
-from services.user import get_details, get_by_username
 import re
+
+from flask import render_template, request, session
+
+from services.question import (all_questions, create, delete,
+                               delete_user_question, get_by_id,
+                               get_by_question, get_by_question_id,
+                               get_random_questions)
+from services.user import get_by_username, get_details
 from utils.utils import handle_email
-from flask import request, render_template, session
 
 
 def get_questions(**kwargs):

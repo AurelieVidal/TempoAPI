@@ -1,7 +1,9 @@
-from . import session_scope
+from sqlalchemy import func
+
 from models.question import Question
 from models.user_question import UserQuestion
-from sqlalchemy import func
+
+from . import session_scope
 
 
 def create(question: str):

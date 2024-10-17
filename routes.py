@@ -1,12 +1,12 @@
-from flask import Blueprint
-from itsdangerous import URLSafeTimedSerializer
 import os
-from flask import session, request, render_template
 import uuid
-from twilio.rest import Client
-from services.user import update, get_details
-from models.user import StatusEnum
 
+from flask import Blueprint, render_template, request, session
+from itsdangerous import URLSafeTimedSerializer
+from twilio.rest import Client
+
+from models.user import StatusEnum
+from services.user import get_details, update
 
 routes = Blueprint('routes', __name__)
 

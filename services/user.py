@@ -1,8 +1,10 @@
-from . import session_scope
-from models.user import User, StatusEnum
-from models.question import Question
-from models.user_question import UserQuestion
 import json
+
+from models.question import Question
+from models.user import StatusEnum, User
+from models.user_question import UserQuestion
+
+from . import session_scope
 
 
 def user_list():

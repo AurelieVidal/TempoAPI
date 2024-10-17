@@ -1,15 +1,13 @@
-import pytest
 from unittest.mock import patch
-from controllers.security_controller import (
-    get_questions,
-    get_question_by_id,
-    get_question_by_question,
-    get_random_list,
-    post_question,
-    delete_question,
-    resend_email,
-    conforming_response_header
-)
+
+import pytest
+
+from controllers.security_controller import (conforming_response_header,
+                                             delete_question,
+                                             get_question_by_id,
+                                             get_question_by_question,
+                                             get_questions, get_random_list,
+                                             post_question, resend_email)
 
 
 @pytest.mark.usefixtures("session")

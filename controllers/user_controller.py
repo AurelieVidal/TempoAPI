@@ -1,17 +1,12 @@
-from services.user import (
-    user_list,
-    create,
-    get_by_username,
-    get_details,
-    add_question_to_user,
-    update
-)
-from services.question import get_by_id
-import random
-import re
 import hashlib
 import os
-from utils.utils import handle_email, call_to_api
+import random
+import re
+
+from services.question import get_by_id
+from services.user import (add_question_to_user, create, get_by_username,
+                           get_details, update, user_list)
+from utils.utils import call_to_api, handle_email
 
 
 def get_users(**kwargs):

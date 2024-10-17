@@ -1,14 +1,11 @@
-import pytest
 from unittest.mock import patch
-from controllers.user_controller import (
-    get_users,
-    get_user_by_username,
-    get_user_details,
-    patch_user,
-    post_users,
-    get_user_info,
-    generate_substrings
-)
+
+import pytest
+
+from controllers.user_controller import (generate_substrings,
+                                         get_user_by_username,
+                                         get_user_details, get_user_info,
+                                         get_users, patch_user, post_users)
 from models.user import StatusEnum
 
 

@@ -1,8 +1,10 @@
-import connexion
-from extensions import db
 import os
+
+import connexion
 from connexion import FlaskApp
 from flask_mail import Mail
+
+from extensions import db
 from routes import routes
 
 # Initialize Connexion app with Flask

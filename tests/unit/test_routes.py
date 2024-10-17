@@ -1,15 +1,12 @@
-import pytest
-from unittest.mock import patch
-from flask import session
-from routes import (
-    check_mail,
-    check_phone,
-    confirm_token,
-    handle_phone_number,
-    check_phone_auth
-)
-from models.user import StatusEnum
 import uuid
+from unittest.mock import patch
+
+import pytest
+from flask import session
+
+from models.user import StatusEnum
+from routes import (check_mail, check_phone, check_phone_auth, confirm_token,
+                    handle_phone_number)
 
 
 @pytest.mark.usefixtures("session")
