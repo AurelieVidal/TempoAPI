@@ -1,4 +1,3 @@
-from controllers.user_controller import get_users, get_user_by_username
 from services.question import (
     create,
     all_questions,

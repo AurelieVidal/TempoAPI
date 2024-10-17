@@ -10,21 +10,21 @@ from flask_mail import Message
 import requests
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestHandleEmail:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch pour l'envoi de mail
-        self.patch_send = patch("flask_mail.Mail.send")  # Patch correct
+        self.patch_send = patch("flask_mail.Mail.send")
         self.mock_send = self.patch_send.start()
         request.addfinalizer(self.patch_send.stop)
 
-        self.patch_token = patch("utils.utils.generate_confirmation_token")
+        self.patch_token = patch(
+            "utils.utils.generate_confirmation_token"
+        )
         self.mock_token = self.patch_token.start()
         request.addfinalizer(self.patch_token.stop)
 
-        # Mock des variables d'environnement
         os.environ["API_URL"] = "http://localhost:5000"
         os.environ["MAIL_USERNAME"] = "test@example.com"
 
@@ -48,10 +48,13 @@ class TestHandleEmail:
         assert sent_msg.recipients == [user_email]
         assert "Hello testuser," in sent_msg.body
         assert "merci de t’être inscrit(e) à Tempo !" in sent_msg.body
-        assert f"http://localhost:5000/checkmail/mocked_token?user_id={user_id}" in sent_msg.body
+        assert (
+            f"http://localhost:5000/checkmail/mocked_token?user_id={user_id}"
+            in sent_msg.body
+        )
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestGenerateConfirmationToken:
 
     @pytest.fixture(autouse=True)
@@ -74,20 +77,24 @@ class TestGenerateConfirmationToken:
         token = generate_confirmation_token(email)
 
         # Then
-        self.mock_serializer.assert_called_once_with(os.environ["SECRET_KEY"])
-        instance.dumps.assert_called_once_with(email, salt=os.environ["SECURITY_PASSWORD_SALT"])
+        self.mock_serializer.assert_called_once_with(
+            os.environ["SECRET_KEY"]
+        )
+        instance.dumps.assert_called_once_with(
+            email,
+            salt=os.environ["SECURITY_PASSWORD_SALT"]
+        )
         assert token == expected_token
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestCallToApi:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch commun pour requests.get
         self.patch_get = patch("utils.utils.requests.get")
         self.mock_get = self.patch_get.start()
         request.addfinalizer(self.patch_get.stop)
-
 
     def test_call_to_api_success(self):
         # Given
@@ -103,7 +110,6 @@ class TestCallToApi:
         assert response == mock_response
         self.mock_get.assert_called_once_with(url)
         mock_response.raise_for_status.assert_called_once()
-
 
     def test_call_to_api_failure(self):
         # Given

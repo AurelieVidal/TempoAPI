@@ -12,16 +12,16 @@ from controllers.user_controller import (
 from models.user import StatusEnum
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestGetUsers:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_user_list = patch("controllers.user_controller.user_list")
+        self.patch_user_list = patch(
+            "controllers.user_controller.user_list"
+        )
         self.mock_user_list = self.patch_user_list.start()
         request.addfinalizer(self.patch_user_list.stop)
-
 
     def test_get_questions(self):
         # Given
@@ -38,7 +38,6 @@ class TestGetUsers:
         assert response["users"] == user_list
         self.mock_user_list.assert_called_with()
 
-
     def test_get_questions_empty_output(self):
         # Given
         self.mock_user_list.return_value = None
@@ -53,13 +52,15 @@ class TestGetUsers:
         assert response["users"] == []
         self.mock_user_list.assert_called_with()
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestGetUserByUsername:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_by_username = patch("controllers.user_controller.get_by_username")
+        self.patch_get_by_username = patch(
+            "controllers.user_controller.get_by_username"
+        )
         self.mock_get_by_username = self.patch_get_by_username.start()
         request.addfinalizer(self.patch_get_by_username.stop)
 
@@ -80,7 +81,6 @@ class TestGetUserByUsername:
         assert response["user"] == user
         self.mock_get_by_username.assert_called_with(username_str)
 
-
     def test_get_user_by_username_no_kwargs(self):
         # When
         response, status_code = get_user_by_username()
@@ -90,7 +90,6 @@ class TestGetUserByUsername:
         assert isinstance(response, dict)
         assert "message" in response
         self.mock_get_by_username.assert_not_called()
-
 
     def test_get_user_by_username_not_found(self):
         # Given
@@ -107,13 +106,15 @@ class TestGetUserByUsername:
         assert "message" in response
         self.mock_get_by_username.assert_called_with(username_str)
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestGetUserDetails:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_details = patch("controllers.user_controller.get_details")
+        self.patch_get_details = patch(
+            "controllers.user_controller.get_details"
+        )
         self.mock_get_details = self.patch_get_details.start()
         request.addfinalizer(self.patch_get_details.stop)
 
@@ -160,17 +161,17 @@ class TestGetUserDetails:
         self.mock_get_details.assert_called_with(username_str)
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestPatchUser:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_details = patch("controllers.user_controller.get_details")
+        self.patch_get_details = patch(
+            "controllers.user_controller.get_details"
+        )
         self.mock_get_details = self.patch_get_details.start()
         request.addfinalizer(self.patch_get_details.stop)
 
-        # Patch 'all_questions'
         self.patch_update = patch("controllers.user_controller.update")
         self.mock_update = self.patch_update.start()
         request.addfinalizer(self.patch_update.stop)
@@ -230,14 +231,17 @@ class TestPatchUser:
     def test_patch_user_no_status(self):
         # Given
         id = 1
-        status = StatusEnum.READY
         kwargs = {
             "userId": id,
             "body": {
                 "something": "useless"
             }
         }
-        user = {"id": 1, "username": "username", "email": "fake@gmail.com"}
+        user = {
+            "id": 1,
+            "username": "username",
+            "email": "fake@gmail.com"
+        }
         self.mock_get_details.return_value = user
 
         # When
@@ -273,31 +277,39 @@ class TestPatchUser:
         self.mock_get_details.assert_not_called()
         self.mock_update.assert_called_with(id, status)
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestPostUser:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_by_id = patch("controllers.user_controller.get_by_id")
+        self.patch_get_by_id = patch(
+            "controllers.user_controller.get_by_id"
+        )
         self.mock_get_by_id = self.patch_get_by_id.start()
         request.addfinalizer(self.patch_get_by_id.stop)
 
-        # Patch 'all_questions'
-        self.patch_get_by_username = patch("controllers.user_controller.get_by_username")
+        self.patch_get_by_username = patch(
+            "controllers.user_controller.get_by_username"
+        )
         self.mock_get_by_username = self.patch_get_by_username.start()
         request.addfinalizer(self.patch_get_by_username.stop)
 
-        # Patch 'all_questions'
-        self.patch_get_user_info = patch("controllers.user_controller.get_user_info")
+        self.patch_get_user_info = patch(
+            "controllers.user_controller.get_user_info"
+        )
         self.mock_get_user_info = self.patch_get_user_info.start()
         request.addfinalizer(self.patch_get_user_info.stop)
 
-        self.patch_env_variable = patch("controllers.user_controller.os.environ.get")
+        self.patch_env_variable = patch(
+            "controllers.user_controller.os.environ.get"
+        )
         self.mock_env_variable = self.patch_env_variable.start()
         request.addfinalizer(self.patch_env_variable.stop)
 
-        self.patch_call_to_api = patch("controllers.user_controller.call_to_api")
+        self.patch_call_to_api = patch(
+            "controllers.user_controller.call_to_api"
+        )
         self.mock_call_to_api = self.patch_call_to_api.start()
         request.addfinalizer(self.patch_call_to_api.stop)
 
@@ -305,14 +317,19 @@ class TestPostUser:
         self.mock_create = self.patch_create.start()
         request.addfinalizer(self.patch_create.stop)
 
-        self.patch_add_question_to_user = patch("controllers.user_controller.add_question_to_user")
-        self.mock_add_question_to_user = self.patch_add_question_to_user.start()
+        self.patch_add_question_to_user = patch(
+            "controllers.user_controller.add_question_to_user"
+        )
+        self.mock_add_question_to_user = (
+            self.patch_add_question_to_user.start()
+        )
         request.addfinalizer(self.patch_add_question_to_user.stop)
 
-        self.patch_handle_email = patch("controllers.user_controller.handle_email")
+        self.patch_handle_email = patch(
+            "controllers.user_controller.handle_email"
+        )
         self.mock_handle_email = self.patch_handle_email.start()
         request.addfinalizer(self.patch_handle_email.stop)
-
 
     def test_post_user(self):
         # Given
@@ -352,7 +369,10 @@ class TestPostUser:
         assert response["user"] == user
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with("username", "fake@email.com")
+        self.mock_get_user_info.assert_called_with(
+            "username",
+            "fake@email.com"
+        )
         self.mock_env_variable.assert_called()
         self.mock_call_to_api.assert_called()
         self.mock_create.assert_called_once()
@@ -373,7 +393,6 @@ class TestPostUser:
         self.mock_call_to_api.assert_not_called()
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
-
 
     def test_post_user_invalid_payload_username(self):
         # Given
@@ -439,7 +458,6 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_invalid_payload_password(self):
         # Given
         kwargs = {
@@ -498,7 +516,6 @@ class TestPostUser:
         self.mock_call_to_api.assert_not_called()
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
-
 
     def test_post_user_invalid_payload_device(self):
         # Given
@@ -564,7 +581,6 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_invalid_payload_question_id(self):
         # Given
         kwargs = {
@@ -597,7 +613,6 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_invalid_payload_question_response(self):
         # Given
         kwargs = {
@@ -629,7 +644,6 @@ class TestPostUser:
         self.mock_call_to_api.assert_not_called()
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
-
 
     def test_post_user_question_not_found(self):
         # Given
@@ -815,10 +829,8 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_insecure_password(self):
         # Given
-        status = StatusEnum.READY
         kwargs = {
             "body": {
                 "username": "username",
@@ -834,7 +846,6 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
-        user = {"id": 1, "username": "username", "status": status}
         self.mock_get_by_id.return_value = {
             "id": 1
         }
@@ -850,16 +861,17 @@ class TestPostUser:
         assert "message" in response
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with("username", "fake@email.com")
+        self.mock_get_user_info.assert_called_with(
+            "username",
+            "fake@email.com"
+        )
         self.mock_env_variable.assert_not_called()
         self.mock_call_to_api.assert_not_called()
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_api_call_failed(self):
         # Given
-        status = StatusEnum.READY
         kwargs = {
             "body": {
                 "username": "username",
@@ -875,7 +887,6 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
-        user = {"id": 1, "username": "username", "status": status}
         self.mock_get_by_id.return_value = {
             "id": 1
         }
@@ -892,16 +903,17 @@ class TestPostUser:
         assert "message" in response
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with("username", "fake@email.com")
+        self.mock_get_user_info.assert_called_with(
+            "username",
+            "fake@email.com"
+        )
         self.mock_env_variable.assert_called()
         self.mock_call_to_api.assert_called()
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-
     def test_post_user_previously_hacked_password(self):
         # Given
-        status = StatusEnum.READY
         kwargs = {
             "body": {
                 "username": "username",
@@ -922,7 +934,9 @@ class TestPostUser:
         }
         self.mock_get_by_username.return_value = None
         self.mock_get_user_info.return_value = ["username", "fake"]
-        self.mock_call_to_api.return_value.text.splitlines.return_value = ["8E91F26BB90232FC6A1374E750B4FE04BE1:ok"]
+        self.mock_call_to_api.return_value.text.splitlines.return_value = [
+            "8E91F26BB90232FC6A1374E750B4FE04BE1:ok"
+        ]
         self.mock_env_variable.return_value = "pepper"
 
         # When
@@ -934,7 +948,10 @@ class TestPostUser:
         assert "message" in response
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with("username", "fake@email.com")
+        self.mock_get_user_info.assert_called_with(
+            "username",
+            "fake@email.com"
+        )
         self.mock_env_variable.assert_called()
         self.mock_call_to_api.assert_called()
         self.mock_create.assert_not_called()
@@ -979,24 +996,33 @@ class TestPostUser:
         assert response["message"] == "Verification email cannot be send"
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with("username", "fake@email.com")
+        self.mock_get_user_info.assert_called_with(
+            "username",
+            "fake@email.com"
+        )
         self.mock_env_variable.assert_called()
         self.mock_call_to_api.assert_called()
         self.mock_create.assert_called_once()
         self.mock_add_question_to_user.assert_called()
-        self.mock_handle_email.assert_called_with(user_email="fake@email.com", username="username", user_id=1)
+        self.mock_handle_email.assert_called_with(
+            user_email="fake@email.com",
+            username="username",
+            user_id=1
+        )
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestGetUserInfo:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_generate_substrings = patch("controllers.user_controller.generate_substrings")
-        self.mock_generate_substrings = self.patch_generate_substrings.start()
+        self.patch_generate_substrings = patch(
+            "controllers.user_controller.generate_substrings"
+        )
+        self.mock_generate_substrings = (
+            self.patch_generate_substrings.start()
+        )
         request.addfinalizer(self.patch_generate_substrings.stop)
-
 
     def test_get_user_info(self):
         # Given
@@ -1005,7 +1031,7 @@ class TestGetUserInfo:
         self.mock_generate_substrings.return_value = ["sub"]
 
         # When
-        response= get_user_info(username, email)
+        response = get_user_info(username, email)
 
         # Then
         assert response == {
@@ -1014,7 +1040,7 @@ class TestGetUserInfo:
         }
 
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestGenerateSubstrings:
 
     def test_get_user_info(self):
@@ -1022,7 +1048,7 @@ class TestGenerateSubstrings:
         word = "substring"
 
         # When
-        response= generate_substrings(word)
+        response = generate_substrings(word)
 
         # Then
         assert response == [

@@ -9,7 +9,7 @@ from services.user import (
 from models.question import Question
 from models.user import User, StatusEnum
 from models.user_question import UserQuestion
-from tests.unit.conftest import session
+
 
 class TestUserList:
 
@@ -52,6 +52,7 @@ class TestUserList:
                 "email": "fake@email.com"
             }
         ]
+
 
 class TestGetByUsername:
 
@@ -115,6 +116,7 @@ class TestGetByUsername:
         # Then
         assert not result
 
+
 class TestGetDetails:
 
     def test_get_details(self, session):
@@ -123,7 +125,7 @@ class TestGetDetails:
         question2 = Question(question="Quel est ton film préféré ?")
         session.add(question1)
         session.add(question2)
-        session.commit()  # Commit pour obtenir les IDs des questions
+        session.commit()
 
         user1 = User(
             username="username",
@@ -141,14 +143,21 @@ class TestGetDetails:
         )
         session.add(user1)
         session.add(user2)
-        session.commit()  # Commit pour obtenir les IDs des utilisateurs
+        session.commit()
 
-        # Crée les relations UserQuestion et sauvegarde leurs IDs
-        user_question1 = UserQuestion(user_id=user1.id, question_id=question1.id, response="Titanic")
-        user_question2 = UserQuestion(user_id=user2.id, question_id=question1.id, response="Harry Potter")
+        user_question1 = UserQuestion(
+            user_id=user1.id,
+            question_id=question1.id,
+            response="Titanic"
+        )
+        user_question2 = UserQuestion(
+            user_id=user2.id,
+            question_id=question1.id,
+            response="Harry Potter"
+        )
         session.add(user_question1)
         session.add(user_question2)
-        session.commit()  # Commit pour persister les relations UserQuestion
+        session.commit()
 
         # When
         result = get_details(1)
@@ -158,7 +167,9 @@ class TestGetDetails:
             "id": 1,
             "username": "username",
             "email": "fake@email.com",
-            "questions": [{'id': 1, 'question': 'Quelle est la couleur du ciel ?'}],
+            "questions": [
+                {'id': 1, 'question': 'Quelle est la couleur du ciel ?'}
+            ],
             "devices": [],
             "status": StatusEnum.CREATING.value,
             "phone": "0102030405"
@@ -170,7 +181,7 @@ class TestGetDetails:
         question2 = Question(question="Quel est ton film préféré ?")
         session.add(question1)
         session.add(question2)
-        session.commit()  # Commit pour obtenir les IDs des questions
+        session.commit()
 
         user1 = User(
             username="username",
@@ -188,20 +199,28 @@ class TestGetDetails:
         )
         session.add(user1)
         session.add(user2)
-        session.commit()  # Commit pour obtenir les IDs des utilisateurs
+        session.commit()
 
-        # Crée les relations UserQuestion et sauvegarde leurs IDs
-        user_question1 = UserQuestion(user_id=user1.id, question_id=question1.id, response="Titanic")
-        user_question2 = UserQuestion(user_id=user2.id, question_id=question1.id, response="Harry Potter")
+        user_question1 = UserQuestion(
+            user_id=user1.id,
+            question_id=question1.id,
+            response="Titanic"
+        )
+        user_question2 = UserQuestion(
+            user_id=user2.id,
+            question_id=question1.id,
+            response="Harry Potter"
+        )
         session.add(user_question1)
         session.add(user_question2)
-        session.commit()  # Commit pour persister les relations UserQuestion
+        session.commit()
 
         # When
         result = get_details(50)
 
         # Then
         assert not result
+
 
 class TestCreate:
 
@@ -224,6 +243,7 @@ class TestCreate:
         }
         created_user = session.query(User).filter_by(id=1).first()
         assert created_user
+
 
 class TestUpdate:
 
@@ -288,6 +308,7 @@ class TestUpdate:
 
         # Then
         assert not result
+
 
 class TestAddQuestionToUser:
 

@@ -11,17 +11,17 @@ from controllers.security_controller import (
     conforming_response_header
 )
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestGetQuestions:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self):
-        self.patch_all_questions = patch("controllers.security_controller.all_questions")
+    def setup_method(self, request):
+        self.patch_all_questions = patch(
+            "controllers.security_controller.all_questions"
+        )
         self.mock_all_questions = self.patch_all_questions.start()
-
-    @pytest.fixture(autouse=True)
-    def teardown_method(self):
-        self.mock_all_questions.stop()
+        request.addfinalizer(self.patch_all_questions.stop)
 
     def test_get_questions(self):
         # Given
@@ -38,7 +38,6 @@ class TestGetQuestions:
         assert response["questions"] == question_list
         self.mock_all_questions.assert_called_with()
 
-
     def test_get_questions_empty_output(self):
         # Given
         self.mock_all_questions.return_value = None
@@ -54,18 +53,16 @@ class TestGetQuestions:
         self.mock_all_questions.assert_called_with()
 
 
-
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+@pytest.mark.usefixtures("session")
 class TestGetQuestionById:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self):
-        self.patch_question_by_id = patch("controllers.security_controller.get_by_id")
+    def setup_method(self, request):
+        self.patch_question_by_id = patch(
+            "controllers.security_controller.get_by_id"
+        )
         self.mock_question_by_id = self.patch_question_by_id.start()
-
-    @pytest.fixture(autouse=True)
-    def teardown_method(self):
-        self.mock_question_by_id.stop()
+        request.addfinalizer(self.patch_question_by_id.stop)
 
     def test_get_question_by_id(self):
         # Given
@@ -83,7 +80,6 @@ class TestGetQuestionById:
         assert "question" in response
         assert response["question"] == question
         self.mock_question_by_id.assert_called_with(id)
-
 
     def test_get_question_by_id_no_kwargs(self):
         # When
@@ -107,7 +103,6 @@ class TestGetQuestionById:
         assert "message" in response
         self.mock_question_by_id.assert_not_called()
 
-
     def test_get_question_by_id_not_found(self):
         # Given
         id = 1
@@ -123,17 +118,19 @@ class TestGetQuestionById:
         assert "message" in response
         self.mock_question_by_id.assert_called_with(id)
 
-@pytest.mark.usefixtures("session")  # Indique qu'on utilise la fixture session
+
+@pytest.mark.usefixtures("session")
 class TestGetQuestionByQuestion:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self):
-        self.patch_question_by_question = patch("controllers.security_controller.get_by_question")
-        self.mock_question_by_question = self.patch_question_by_question.start()
-
-    @pytest.fixture(autouse=True)
-    def teardown_method(self):
-        self.mock_question_by_question.stop()
+    def setup_method(self, request):
+        self.patch_question_by_question = patch(
+            "controllers.security_controller.get_by_question"
+        )
+        self.mock_question_by_question = (
+            self.patch_question_by_question.start()
+        )
+        request.addfinalizer(self.patch_question_by_question.stop)
 
     def test_get_question_by_question(self):
         # Given
@@ -152,7 +149,6 @@ class TestGetQuestionByQuestion:
         assert response["question"] == question
         self.mock_question_by_question.assert_called_with(question_str)
 
-
     def test_get_question_by_question_no_kwargs(self):
         # When
         response, status_code = get_question_by_question()
@@ -162,7 +158,6 @@ class TestGetQuestionByQuestion:
         assert isinstance(response, dict)
         assert "message" in response
         self.mock_question_by_question.assert_not_called()
-
 
     def test_get_question_by_question_not_found(self):
         # Given
@@ -180,27 +175,36 @@ class TestGetQuestionByQuestion:
         self.mock_question_by_question.assert_called_with(question_str)
 
 
-
 @pytest.mark.usefixtures("session")
 class TestRandomList:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_all_questions = patch("controllers.security_controller.all_questions")
+        self.patch_all_questions = patch(
+            "controllers.security_controller.all_questions"
+        )
         self.mock_all_questions = self.patch_all_questions.start()
-        request.addfinalizer(self.patch_all_questions.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_all_questions.stop)
 
-        # Patch 'get_random_questions'
-        self.patch_get_random_questions = patch("controllers.security_controller.get_random_questions")
-        self.mock_get_random_questions = self.patch_get_random_questions.start()
-        request.addfinalizer(self.patch_get_random_questions.stop)  # Ajoute l'arrêt du patch à la fin du test
+        self.patch_get_random_questions = patch(
+            "controllers.security_controller.get_random_questions"
+        )
+        self.mock_get_random_questions = (
+            self.patch_get_random_questions.start()
+        )
+        request.addfinalizer(self.patch_get_random_questions.stop)
 
     def test_get_random_list(self):
         # Given
         number = 3
         kwargs = {"number": number}
-        question_list = ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]
+        question_list = [
+            "Question 1",
+            "Question 2",
+            "Question 3",
+            "Question 4",
+            "Question 5"
+        ]
         random_list = ["Question 4", "Question 2", "Question 3"]
         self.mock_all_questions.return_value = question_list
         self.mock_get_random_questions.return_value = random_list
@@ -212,10 +216,9 @@ class TestRandomList:
         assert status_code == 200
         assert isinstance(response, dict)
         assert "questions" in response
-        assert response["questions"] == random_list  # Vérifie que c'est 'random_list', non 'question_list'
+        assert response["questions"] == random_list
         self.mock_all_questions.assert_called_with()
         self.mock_get_random_questions.assert_called_with(number)
-
 
     def test_get_random_list_no_kwargs(self):
         # When
@@ -227,7 +230,6 @@ class TestRandomList:
         assert "message" in response
         self.mock_get_random_questions.assert_not_called()
         self.mock_all_questions.assert_not_called()
-
 
     def test_get_random_high_number(self):
         # Given
@@ -252,19 +254,25 @@ class TestPostQuestion:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_by_question = patch("controllers.security_controller.get_by_question")
+        self.patch_get_by_question = patch(
+            "controllers.security_controller.get_by_question"
+        )
         self.mock_get_by_question = self.patch_get_by_question.start()
-        request.addfinalizer(self.patch_get_by_question.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_get_by_question.stop)
 
-        # Patch 'get_random_questions'
         self.patch_create = patch("controllers.security_controller.create")
         self.mock_create = self.patch_create.start()
-        request.addfinalizer(self.patch_create.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_create.stop)
 
     def test_post_question(self):
         # Given
-        question_list = ["Question 1 ?", "Question 2 ?", "Question 3 ?", "Question 4 ?", "Question 5 ?"]
+        question_list = [
+            "Question 1 ?",
+            "Question 2 ?",
+            "Question 3 ?",
+            "Question 4 ?",
+            "Question 5 ?"
+        ]
         kwargs = {"body": {
             "questions": question_list
         }}
@@ -278,7 +286,13 @@ class TestPostQuestion:
         assert status_code == 200
         assert isinstance(response, dict)
         assert "questions" in response
-        assert response["questions"] == ["question",  "question",  "question",  "question",  "question"]
+        assert response["questions"] == [
+            "question",
+            "question",
+            "question",
+            "question",
+            "question"
+        ]
         self.mock_get_by_question.assert_called()
         self.mock_create.assert_called()
 
@@ -307,13 +321,20 @@ class TestPostQuestion:
         self.mock_create.assert_not_called()
         self.mock_get_by_question.assert_not_called()
 
-
     def test_post_question_invalid_format(self):
         # Given
-        question_list = ["Question 1 ?", "Question 2", "Question 3 ?", "Question 4 ?", "Question 5 ?"]
-        kwargs = {"body": {
-            "questions": question_list
-        }}
+        question_list = [
+            "Question 1 ?",
+            "Question 2",
+            "Question 3 ?",
+            "Question 4 ?",
+            "Question 5 ?"
+        ]
+        kwargs = {
+            "body": {
+                "questions": question_list
+            }
+        }
 
         # When
         response, status_code = post_question(**kwargs)
@@ -325,13 +346,20 @@ class TestPostQuestion:
         self.mock_create.assert_not_called()
         self.mock_get_by_question.assert_not_called()
 
-
     def test_post_question_already_exist(self):
         # Given
-        question_list = ["Question 1 ?", "Question 2 ?", "Question 3 ?", "Question 4 ?", "Question 5 ?"]
-        kwargs = {"body": {
-            "questions": question_list
-        }}
+        question_list = [
+            "Question 1 ?",
+            "Question 2 ?",
+            "Question 3 ?",
+            "Question 4 ?",
+            "Question 5 ?"
+        ]
+        kwargs = {
+            "body": {
+                "questions": question_list
+            }
+        }
         self.mock_get_by_question.return_value = "already exists"
         self.mock_create.return_value = "question"
 
@@ -351,30 +379,35 @@ class TestDeleteQuestion:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch 'all_questions'
-        self.patch_get_by_question_id = patch("controllers.security_controller.get_by_question_id")
+        self.patch_get_by_question_id = patch(
+            "controllers.security_controller.get_by_question_id"
+        )
         self.mock_get_by_question_id = self.patch_get_by_question_id.start()
-        request.addfinalizer(self.patch_get_by_question_id.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_get_by_question_id.stop)
 
-        self.patch_get_details = patch("controllers.security_controller.get_details")
+        self.patch_get_details = patch(
+            "controllers.security_controller.get_details"
+        )
         self.mock_get_details = self.patch_get_details.start()
-        request.addfinalizer(self.patch_get_details.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_get_details.stop)
 
-        # Patch 'get_random_questions'
-        self.patch_delete_user_question = patch("controllers.security_controller.delete_user_question")
-        self.mock_delete_user_question = self.patch_delete_user_question.start()
-        request.addfinalizer(self.patch_delete_user_question.stop)  # Ajoute l'arrêt du patch à la fin du test
+        self.patch_delete_user_question = patch(
+            "controllers.security_controller.delete_user_question"
+        )
+        self.mock_delete_user_question = (
+            self.patch_delete_user_question.start()
+        )
+        request.addfinalizer(self.patch_delete_user_question.stop)
 
-        # Patch 'get_random_questions'
         self.patch_delete = patch("controllers.security_controller.delete")
         self.mock_delete = self.patch_delete.start()
-        request.addfinalizer(self.patch_delete.stop)  # Ajoute l'arrêt du patch à la fin du test
+        request.addfinalizer(self.patch_delete.stop)
 
     def test_delete_question(self):
         # Given
         question_id = 1
         user_list = ["user1", "user2", "user3"]
-        details = {"questions": [1,2,3]}
+        details = {"questions": [1, 2, 3]}
         deleted_question = "deleted question"
         kwargs = {"questionId": question_id}
         self.mock_get_by_question_id.return_value = user_list
@@ -407,7 +440,6 @@ class TestDeleteQuestion:
         self.mock_delete_user_question.assert_not_called()
         self.mock_delete.assert_not_called()
 
-
     def test_delete_question_invalid_kwargs(self):
         # Given
         kwargs = {"questionId": "question_id"}
@@ -423,7 +455,6 @@ class TestDeleteQuestion:
         self.mock_get_details.assert_not_called()
         self.mock_delete_user_question.assert_not_called()
         self.mock_delete.assert_not_called()
-
 
     def test_delete_question_question_still_assigned(self):
         # Given
@@ -476,30 +507,39 @@ class TestResendEmail:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Mock `get_by_username_phone`
-        self.patch_get_by_username = patch("controllers.security_controller.get_by_username")
+        self.patch_get_by_username = patch(
+            "controllers.security_controller.get_by_username"
+        )
         self.mock_get_by_username = self.patch_get_by_username.start()
         request.addfinalizer(self.patch_get_by_username.stop)
 
-        self.patch_get_details = patch("controllers.security_controller.get_details")
+        self.patch_get_details = patch(
+            "controllers.security_controller.get_details"
+        )
         self.mock_get_details = self.patch_get_details.start()
         request.addfinalizer(self.patch_get_details.stop)
 
-        # Mock `handle_email`
-        self.patch_handle_email = patch("controllers.security_controller.handle_email")
+        self.patch_handle_email = patch(
+            "controllers.security_controller.handle_email"
+        )
         self.mock_handle_email = self.patch_handle_email.start()
         request.addfinalizer(self.patch_handle_email.stop)
 
-        self.patch_render_template = patch("controllers.security_controller.render_template")
+        self.patch_render_template = patch(
+            "controllers.security_controller.render_template"
+        )
         self.mock_render_template = self.patch_render_template.start()
         request.addfinalizer(self.patch_render_template.stop)
 
-
-        self.patch_conforming_response_header = patch("controllers.security_controller.conforming_response_header")
-        self.mock_conforming_response_header = self.patch_conforming_response_header.start()
+        self.patch_conforming_response_header = patch(
+            "controllers.security_controller.conforming_response_header"
+        )
+        self.mock_conforming_response_header = (
+            self.patch_conforming_response_header.start()
+        )
         request.addfinalizer(self.patch_conforming_response_header.stop)
 
-    def test_resend_email_success_html(self, test_app):  # Utilisez la fixture `app`
+    def test_resend_email_success_html(self, test_app):
         # Given
         kwargs = {"username": "valid_user"}
         user_data = {"email": "user@example.com", "id": 1}
@@ -512,9 +552,11 @@ class TestResendEmail:
         self.mock_get_by_username.return_value = user_data
         self.mock_get_details.return_value = detailed_user_data
 
-        # Simuler la session sans token et l'acceptation HTML dans le contexte de requête
-        with test_app.test_request_context(headers={"Accept": "text/html"}):  # Utilisez `app.test_request_context`
-            with patch("controllers.security_controller.session", dict(email_token="token")) as mock_session:
+        with test_app.test_request_context(headers={"Accept": "text/html"}):
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token="token")
+            ) as mock_session:
                 # When
                 response, status_code, headers = resend_email(**kwargs)
 
@@ -522,16 +564,15 @@ class TestResendEmail:
                 assert status_code == 202
                 self.mock_get_by_username.assert_called_with("valid_user")
                 self.mock_get_details.assert_called_with(1)
-                self.mock_render_template.assert_called_with('email_resend_template.html')
+                self.mock_render_template.assert_called_with(
+                    'email_resend_template.html'
+                )
                 self.mock_conforming_response_header.assert_called()
                 assert 'email_token' not in mock_session
 
-    def test_resend_email_success_swagger(self, test_app):  # Utilisez la fixture `app`
+    def test_resend_email_success_swagger(self, test_app):
         # Given
         kwargs = {"username": "valid_user"}
-        user_data = {"email": "user@example.com", "id": 1}
-
-        # Configure le mock pour renvoyer un utilisateur valide
         user_data = {"email": "user@example.com", "id": 1}
         detailed_user_data = {
             "email": "user@example.com",
@@ -542,9 +583,13 @@ class TestResendEmail:
         self.mock_get_by_username.return_value = user_data
         self.mock_get_details.return_value = detailed_user_data
 
-        # Simuler la session sans token et l'acceptation HTML dans le contexte de requête
-        with test_app.test_request_context(headers={"Accept": "application/json"}):  # Utilisez `app.test_request_context`
-            with patch("controllers.security_controller.session", dict(email_token="token")) as mock_session:
+        with test_app.test_request_context(
+                headers={"Accept": "application/json"}
+        ):
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token="token")
+            ) as mock_session:
                 # When
                 response, status_code, headers = resend_email(**kwargs)
 
@@ -557,8 +602,10 @@ class TestResendEmail:
                 self.mock_conforming_response_header.assert_called()
                 assert 'email_token' not in mock_session
 
-    def test_resend_email_no_kwargs(self, test_app):  # Utilisez la fixture `app`
-        with test_app.test_request_context(headers={"Accept": "application/json"}):  # Utilisez `app.test_request_context`
+    def test_resend_email_no_kwargs(self, test_app):
+        with test_app.test_request_context(
+                headers={"Accept": "application/json"}
+        ):
             with patch("controllers.security_controller.session"):
                 # When
                 response, status_code = resend_email()
@@ -572,17 +619,19 @@ class TestResendEmail:
                 self.mock_get_by_username.assert_not_called()
                 self.mock_get_details.assert_not_called()
 
-    def test_resend_email_user_not_found(self, test_app):  # Utilisez la fixture `app`
+    def test_resend_email_user_not_found(self, test_app):
         # Given
         username = "valid_user"
         kwargs = {"username": username}
-
-        # Configure le mock pour renvoyer un utilisateur valide
         self.mock_get_by_username.return_value = None
 
-        # Simuler la session sans token et l'acceptation HTML dans le contexte de requête
-        with test_app.test_request_context(headers={"Accept": "application/json"}):  # Utilisez `app.test_request_context`
-            with patch("controllers.security_controller.session", dict(email_token="token")) as mock_session:
+        with test_app.test_request_context(
+                headers={"Accept": "application/json"}
+        ):
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token="token")
+            ):
                 # When
                 response, status_code = resend_email(**kwargs)
 
@@ -595,7 +644,7 @@ class TestResendEmail:
                 self.mock_get_by_username.assert_called_with(username)
                 self.mock_get_details.assert_not_called()
 
-    def test_resend_email_html_no_token(self, test_app):  # Utilisez la fixture `app`
+    def test_resend_email_html_no_token(self, test_app):
         # Given
         kwargs = {"username": "valid_user"}
         user_data = {"email": "user@example.com", "id": 1}
@@ -608,9 +657,11 @@ class TestResendEmail:
         self.mock_get_by_username.return_value = user_data
         self.mock_get_details.return_value = detailed_user_data
 
-        # Simuler la session sans token et l'acceptation HTML dans le contexte de requête
-        with test_app.test_request_context(headers={"Accept": "text/html"}):  # Utilisez `app.test_request_context`
-            with patch("controllers.security_controller.session", dict(email_token=None)) as mock_session:
+        with test_app.test_request_context(headers={"Accept": "text/html"}):
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token=None)
+            ):
                 # When
                 response, status_code, headers = resend_email(**kwargs)
 
@@ -618,10 +669,12 @@ class TestResendEmail:
                 assert status_code == 202
                 self.mock_get_by_username.assert_called_with("valid_user")
                 self.mock_get_details.assert_called_with(1)
-                self.mock_render_template.assert_called_with('email_resend_template.html')
+                self.mock_render_template.assert_called_with(
+                    'email_resend_template.html'
+                )
                 self.mock_conforming_response_header.assert_called()
 
-    def test_resend_email_swagger_no_template(self, test_app):  # Utilisez la fixture `app`
+    def test_resend_email_swagger_no_template(self, test_app):
         # Given
         kwargs = {"username": "valid_user"}
         user_data = {"email": "user@example.com", "id": 1}
@@ -634,9 +687,13 @@ class TestResendEmail:
         self.mock_get_by_username.return_value = user_data
         self.mock_get_details.return_value = detailed_user_data
 
-        # Simuler la session sans token et l'acceptation HTML dans le contexte de requête
-        with test_app.test_request_context(headers={"Accept": "application/json"}):  # Utilisez `app.test_request_context`
-            with patch("controllers.security_controller.session", dict(email_token=None)) as mock_session:
+        with test_app.test_request_context(
+                headers={"Accept": "application/json"}
+        ):
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token=None)
+            ):
                 # When
                 response, status_code, headers = resend_email(**kwargs)
 
@@ -661,36 +718,43 @@ class TestResendEmail:
         self.mock_get_by_username.return_value = user_data
         self.mock_get_details.return_value = detailed_user_data
 
-        # Simuler la session avec un token et l'acceptation HTML dans le contexte de requête
         with test_app.test_request_context(headers={"Accept": "text/html"}):
-            with patch("controllers.security_controller.session", dict(email_token="token")) as mock_session:
-                # Simuler une exception lors de l'appel à `handle_email`
-                self.mock_handle_email.side_effect = Exception("Test exception")
+            with patch(
+                    "controllers.security_controller.session",
+                    dict(email_token="token")
+            ) as mock_session:
+                self.mock_handle_email.side_effect = Exception(
+                    "Test exception"
+                )
 
                 # When
                 response, status_code = resend_email(**kwargs)
 
                 # Then
-                assert status_code == 500  # Vérifie que le code retour est 500 pour une erreur serveur
+                assert status_code == 500
                 self.mock_get_by_username.assert_called_with("valid_user")
                 self.mock_get_details.assert_called_with(1)
-                assert response["message"] == "An error occurred while sending the email"  # Message d'erreur attendu
-                self.mock_handle_email.assert_called()  # Vérifie que handle_email a bien été appelé
-                assert 'email_token' not in mock_session  # Vérifie que le token a bien été retiré de la session
+                assert response["message"] == (
+                    "An error occurred while sending the email"
+                )
+                self.mock_handle_email.assert_called()
+                assert 'email_token' not in mock_session
+
 
 @pytest.mark.usefixtures("session")
 class TestConformingResponseHeader:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        # Patch uniquement `accept_mimetypes`
-        self.patch_accept_mimetypes = patch("flask.Request.accept_mimetypes", autospec=True)
+        self.patch_accept_mimetypes = patch(
+            "flask.Request.accept_mimetypes",
+            autospec=True
+        )
         self.mock_accept_mimetypes = self.patch_accept_mimetypes.start()
         request.addfinalizer(self.patch_accept_mimetypes.stop)
 
     def test_conforming_response_header_html(self, test_app):
         # Given
-        # Simuler l'acceptation du contenu HTML
         self.mock_accept_mimetypes.accept_html = True
 
         with test_app.test_request_context(headers={"Accept": "text/html"}):
@@ -702,10 +766,11 @@ class TestConformingResponseHeader:
 
     def test_conforming_response_header_json(self, test_app):
         # Given
-        # Simuler l'acceptation du contenu JSON
         self.mock_accept_mimetypes.accept_html = False
 
-        with test_app.test_request_context(headers={"Accept": "application/json"}):
+        with test_app.test_request_context(
+                headers={"Accept": "application/json"}
+        ):
             # When
             response_header = conforming_response_header()
 

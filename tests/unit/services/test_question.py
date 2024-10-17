@@ -10,7 +10,7 @@ from services.question import (
 from models.question import Question
 from models.user import User
 from models.user_question import UserQuestion
-from tests.unit.conftest import session
+
 
 class TestCreate:
 
@@ -80,6 +80,7 @@ class TestGetById:
         # Then
         assert not result
 
+
 class TestGetByQuestion:
 
     def test_get_by_question(self, session):
@@ -125,7 +126,7 @@ class TestGetByQuestionId:
         user1 = User(
             username="username",
             email="fake@email.com",
-            password= "password",
+            password="password",
             salt="abcd",
             phone="0102030405"
         )
@@ -138,8 +139,16 @@ class TestGetByQuestionId:
         )
         session.add(user1)
         session.add(user2)
-        user_question1 = UserQuestion(user_id=1, question_id=12, response="Titanic")
-        user_question2 = UserQuestion(user_id=2, question_id=12, response="Hatty Potter")
+        user_question1 = UserQuestion(
+            user_id=1,
+            question_id=12,
+            response="Titanic"
+        )
+        user_question2 = UserQuestion(
+            user_id=2,
+            question_id=12,
+            response="Hatty Potter"
+        )
         session.add(user_question1)
         session.add(user_question2)
         session.commit()
@@ -150,6 +159,7 @@ class TestGetByQuestionId:
         # Then
         assert len(result) == 2
         assert result == [1, 2]
+
 
 class TestGetRandomQuestions:
 
@@ -186,6 +196,7 @@ class TestGetRandomQuestions:
             }
         ]
 
+
 class TestDelete:
 
     def test_delete(self, session):
@@ -200,11 +211,15 @@ class TestDelete:
         result = delete(1)
 
         # Then
-        assert result =={
+        assert result == {
                 "id": 1,
                 "question": "Quelle est la couleur du ciel ?"
             }
-        question_deleted = session.query(Question).filter(Question.id == question1.id).first()
+        question_deleted = (
+            session.query(Question)
+            .filter(Question.id == question1.id)
+            .first()
+        )
         assert question_deleted is None
 
     def test_delete_question_does_not_exists(self, session):
@@ -221,6 +236,7 @@ class TestDelete:
         # Then
         assert not result
 
+
 class TestDeleteUserQuestion:
 
     def test_delete_user_question(self, session):
@@ -229,7 +245,7 @@ class TestDeleteUserQuestion:
         question2 = Question(question="Quel est ton film préféré ?")
         session.add(question1)
         session.add(question2)
-        session.commit()  # Commit pour obtenir les IDs des questions
+        session.commit()
 
         user1 = User(
             username="username",
@@ -247,14 +263,21 @@ class TestDeleteUserQuestion:
         )
         session.add(user1)
         session.add(user2)
-        session.commit()  # Commit pour obtenir les IDs des utilisateurs
+        session.commit()
 
-        # Crée les relations UserQuestion et sauvegarde leurs IDs
-        user_question1 = UserQuestion(user_id=user1.id, question_id=question1.id, response="Titanic")
-        user_question2 = UserQuestion(user_id=user2.id, question_id=question1.id, response="Harry Potter")
+        user_question1 = UserQuestion(
+            user_id=user1.id,
+            question_id=question1.id,
+            response="Titanic"
+        )
+        user_question2 = UserQuestion(
+            user_id=user2.id,
+            question_id=question1.id,
+            response="Harry Potter"
+        )
         session.add(user_question1)
         session.add(user_question2)
-        session.commit()  # Commit pour persister les relations UserQuestion
+        session.commit()
 
         user_question1_id = user_question1.id
         user_question2_id = user_question2.id
@@ -263,8 +286,15 @@ class TestDeleteUserQuestion:
         delete_user_question(question1.id)
 
         # Then
-        relationship_deleted1 = session.query(UserQuestion).filter_by(id=user_question1_id).first()
-        relationship_deleted2 = session.query(UserQuestion).filter_by(id=user_question2_id).first()
+        relationship_deleted1 = (
+            session.query(UserQuestion)
+            .filter_by(id=user_question1_id)
+            .first()
+        )
+        relationship_deleted2 = (
+            session.query(UserQuestion)
+            .filter_by(id=user_question2_id).
+            first()
+        )
         assert relationship_deleted1 is None
         assert relationship_deleted2 is None
-

@@ -1,8 +1,6 @@
 import connexion
 from extensions import db
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from connexion import FlaskApp
 from flask_mail import Mail
 from routes import routes
@@ -22,21 +20,16 @@ if not os.environ.get('MAIL_PASSWORD'):
 app = FlaskApp(__name__,  specification_dir='./', swagger_ui_options=options)
 
 # Configuration of the database
-if not os.environ.get('DATABASE'):
-    raise Exception("No env variable DATABASE")
 app.app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE')
 
 # Initialize extensions
 db.init_app(app.app)
-# engine = create_engine(os.environ.get('DATABASE'), echo=True)
-# Session = sessionmaker(bind=engine, expire_on_commit=False)
 
 # Add the Swagger to the API
 app.add_api('swagger.yaml')
 
 # Blueprint for visible routes
 app.app.register_blueprint(routes)
-
 
 # Email configuration
 if not os.environ.get('MAIL_USERNAME'):
