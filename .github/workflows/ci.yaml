@@ -38,3 +38,12 @@ jobs:
     - name: Isort
       run: |
         make isort-check
+
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarqube-scan-action@v2
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        sonarHostUrl: "https://sonarcloud.io"
+        organization: "AurelieVidal"
+        projectKey: "aurelievidal"
