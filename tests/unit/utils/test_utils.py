@@ -57,13 +57,7 @@ class TestGenerateConfirmationToken:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        self.salt = ""
-        for _ in range(5):
-            random_integer = random.randint(97, 97 + 26 - 1)
-            is_capital = random.randint(0, 1)
-            random_integer = random_integer - 32 \
-                if is_capital == 1 else random_integer
-            self.salt += chr(random_integer)
+        self.salt = "fake_salt"
 
         os.environ["SECRET_KEY"] = "test_secret"
         os.environ["SECURITY_PASSWORD_SALT"] = self.salt
