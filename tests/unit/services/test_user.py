@@ -6,28 +6,31 @@ from services.user import (add_question_to_user, create, get_by_username,
 from tests.unit.testing_utils import generate_password
 
 
+def create_user(session, username, email, phone="0102030405", password="password", status=StatusEnum.READY, salt="abcd"):
+    user = User(
+        username=username,
+        email=email,
+        password=password,
+        salt=salt,
+        phone=phone,
+        status=status
+    )
+    session.add(user)
+    return user
+
+
+def create_question(session, question_text):
+    question = Question(question=question_text)
+    session.add(question)
+    return question
+
+
 class TestUserList:
 
     def test_user_list(self, session):
         # Given
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -36,16 +39,8 @@ class TestUserList:
         # Then
         assert len(result) == 2
         assert result == [
-            {
-                "id": 1,
-                "username": "username",
-                "email": "fake@email.com"
-            },
-            {
-                "id": 2,
-                "username": "username2",
-                "email": "fake@email.com"
-            }
+            {"id": 1, "username": "username", "email": "fake@email.com"},
+            {"id": 2, "username": "username2", "email": "fake@email.com"}
         ]
 
 
@@ -53,24 +48,8 @@ class TestGetByUsername:
 
     def test_get_by_username(self, session):
         # Given
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -85,24 +64,8 @@ class TestGetByUsername:
 
     def test_get_by_username_user_not_found(self, session):
         # Given
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -116,40 +79,16 @@ class TestGetDetails:
 
     def test_get_details(self, session):
         # Given
-        question1 = Question(question="Quelle est la couleur du ciel ?")
-        question2 = Question(question="Quel est ton film préféré ?")
-        session.add(question1)
-        session.add(question2)
+        question1 = create_question(session, "Quelle est la couleur du ciel ?")
+        create_question(session, "Quel est ton film préféré ?")
         session.commit()
 
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405"
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405"
-        )
-        session.add(user1)
-        session.add(user2)
+        user1 = create_user(session, "username", "fake@email.com")
+        user2 = create_user(session, "username2", "fake@email.com")
         session.commit()
 
-        user_question1 = UserQuestion(
-            user_id=user1.id,
-            question_id=question1.id,
-            response="Titanic"
-        )
-        user_question2 = UserQuestion(
-            user_id=user2.id,
-            question_id=question1.id,
-            response="Harry Potter"
-        )
+        user_question1 = UserQuestion(user_id=user1.id, question_id=question1.id, response="Titanic")
+        user_question2 = UserQuestion(user_id=user2.id, question_id=question1.id, response="Harry Potter")
         session.add(user_question1)
         session.add(user_question2)
         session.commit()
@@ -162,52 +101,20 @@ class TestGetDetails:
             "id": 1,
             "username": "username",
             "email": "fake@email.com",
-            "questions": [
-                {'id': 1, 'question': 'Quelle est la couleur du ciel ?'}
-            ],
+            "questions": [{'id': 1, 'question': 'Quelle est la couleur du ciel ?'}],
             "devices": [],
-            "status": StatusEnum.CREATING.value,
+            "status": StatusEnum.READY.value,
             "phone": "0102030405"
         }
 
     def test_get_details_user_not_found(self, session):
         # Given
-        question1 = Question(question="Quelle est la couleur du ciel ?")
-        question2 = Question(question="Quel est ton film préféré ?")
-        session.add(question1)
-        session.add(question2)
+        create_question(session, "Quelle est la couleur du ciel ?")
+        create_question(session, "Quel est ton film préféré ?")
         session.commit()
 
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405"
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405"
-        )
-        session.add(user1)
-        session.add(user2)
-        session.commit()
-
-        user_question1 = UserQuestion(
-            user_id=user1.id,
-            question_id=question1.id,
-            response="Titanic"
-        )
-        user_question2 = UserQuestion(
-            user_id=user2.id,
-            question_id=question1.id,
-            response="Harry Potter"
-        )
-        session.add(user_question1)
-        session.add(user_question2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -225,12 +132,12 @@ class TestCreate:
             username="username",
             email="fake@email.com",
             password=generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
+                length=10,
+                use_upper=True,
+                use_lower=True,
+                use_digits=True,
+                allow_repetitions=False,
+                allow_series=False
             ),
             salt="abcd",
             device="iphone",
@@ -251,24 +158,8 @@ class TestUpdate:
 
     def test_update(self, session):
         # Given
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -285,24 +176,8 @@ class TestUpdate:
 
     def test_update_user_not_found(self, session):
         # Given
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
@@ -314,34 +189,16 @@ class TestUpdate:
 
 class TestAddQuestionToUser:
 
-    def test_update(self, session):
+    def test_add_question_to_user(self, session):
         # Given
-        question1 = Question(question="Quelle est la couleur du ciel ?")
-        question2 = Question(question="Quel est ton film préféré ?")
-        session.add(question1)
-        session.add(question2)
-        user1 = User(
-            username="username",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        user2 = User(
-            username="username2",
-            email="fake@email.com",
-            password="password",
-            salt="abcd",
-            phone="0102030405",
-            status=StatusEnum.READY
-        )
-        session.add(user1)
-        session.add(user2)
+        question1 = create_question(session, "Quelle est la couleur du ciel ?")
+        create_question(session, "Quel est ton film préféré ?")
+        user1 = create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
         session.commit()
 
         # When
-        add_question_to_user(user_id=1, question_id=1, response="bleu")
+        add_question_to_user(user_id=user1.id, question_id=question1.id, response="bleu")
 
         # Then
         user_question = session.query(UserQuestion).first()
