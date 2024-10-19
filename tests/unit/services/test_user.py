@@ -6,7 +6,15 @@ from services.user import (add_question_to_user, create, get_by_username,
 from tests.unit.testing_utils import generate_password
 
 
-def create_user(session, username, email, phone="0102030405", password="password", status=StatusEnum.READY, salt="abcd"):
+def create_user(
+        session,
+        username,
+        email,
+        phone="0102030405",
+        password="password",
+        status=StatusEnum.READY,
+        salt="abcd"
+):
     user = User(
         username=username,
         email=email,
@@ -87,8 +95,16 @@ class TestGetDetails:
         user2 = create_user(session, "username2", "fake@email.com")
         session.commit()
 
-        user_question1 = UserQuestion(user_id=user1.id, question_id=question1.id, response="Titanic")
-        user_question2 = UserQuestion(user_id=user2.id, question_id=question1.id, response="Harry Potter")
+        user_question1 = UserQuestion(
+            user_id=user1.id,
+            question_id=question1.id,
+            response="Titanic"
+        )
+        user_question2 = UserQuestion(
+            user_id=user2.id,
+            question_id=question1.id,
+            response="Harry Potter"
+        )
         session.add(user_question1)
         session.add(user_question2)
         session.commit()
@@ -101,7 +117,12 @@ class TestGetDetails:
             "id": 1,
             "username": "username",
             "email": "fake@email.com",
-            "questions": [{'id': 1, 'question': 'Quelle est la couleur du ciel ?'}],
+            "questions": [
+                {
+                    'id': 1,
+                    'question': 'Quelle est la couleur du ciel ?'
+                }
+            ],
             "devices": [],
             "status": StatusEnum.READY.value,
             "phone": "0102030405"
@@ -198,7 +219,11 @@ class TestAddQuestionToUser:
         session.commit()
 
         # When
-        add_question_to_user(user_id=user1.id, question_id=question1.id, response="bleu")
+        add_question_to_user(
+            user_id=user1.id,
+            question_id=question1.id,
+            response="bleu"
+        )
 
         # Then
         user_question = session.query(UserQuestion).first()

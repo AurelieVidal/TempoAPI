@@ -410,256 +410,45 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-    def test_post_user_invalid_payload_username(self):
-        # Given
-        kwargs = {
-            "body": {
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
+    def test_post_user_invalid_payload(self):
+        valid_payload = {
+            "username": "username",
+            "email": "fake@email.com",
+            "password": self.valid_password,
+            "questions": [{"questionId": 1, "response": "answer"}],
+            "device": "iphone",
+            "phone": "123456789"
         }
 
-        # When
-        response, status_code = post_users(**kwargs)
+        invalid_payloads = [
+            {**valid_payload, "username": None},
+            {**valid_payload, "email": None},
+            {**valid_payload, "password": None},
+            {**valid_payload, "questions": None},
+            {**valid_payload, "device": None},
+            {**valid_payload, "phone": None},
+            {**valid_payload, "questions": [{"response": "answer"}]},
+            {**valid_payload, "questions": [{"questionId": 1}]}
+        ]
 
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
+        for payload in invalid_payloads:
+            payload = {k: v for k, v in payload.items() if v is not None}
+            kwargs = {"body": payload}
 
-    def test_post_user_invalid_payload_email(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
+            # When
+            response, status_code = post_users(**kwargs)
 
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_password(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_questions(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_device(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "phone": "123456789"
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_phone(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_question_id(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_payload_question_response(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": self.valid_password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
+            # Then
+            assert status_code == 400
+            assert isinstance(response, dict)
+            assert "message" in response
+            self.mock_get_by_id.assert_not_called()
+            self.mock_get_by_username.assert_not_called()
+            self.mock_get_user_info.assert_not_called()
+            self.mock_env_variable.assert_not_called()
+            self.mock_call_to_api.assert_not_called()
+            self.mock_create.assert_not_called()
+            self.mock_add_question_to_user.assert_not_called()
 
     def test_post_user_question_not_found(self):
         # Given
@@ -758,16 +547,8 @@ class TestPostUser:
         self.mock_create.assert_not_called()
         self.mock_add_question_to_user.assert_not_called()
 
-    def test_post_user_invalid_password_serie(self):
+    def test_post_user_invalid_password_series(self):
         # Given
-        print(generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=True
-                ))
         kwargs = {
             "body": {
                 "username": "username",
