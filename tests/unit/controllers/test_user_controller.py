@@ -1,6 +1,6 @@
 from unittest.mock import patch
 import pytest
-import random
+import secrets
 import string
 
 from controllers.user_controller import (generate_substrings,
@@ -54,15 +54,15 @@ def generate_password(
 
         # Ajout forcé d'au moins une majuscule, une minuscule et un chiffre si requis
         if use_upper:
-            password.append(random.choice(string.ascii_uppercase))
+            password.append(secrets.choice(string.ascii_uppercase))
         if use_lower:
-            password.append(random.choice(string.ascii_lowercase))
+            password.append(secrets.choice(string.ascii_lowercase))
         if use_digits:
-            password.append(random.choice(string.digits))
+            password.append(secrets.choice(string.digits))
 
         # Compléter le reste du mot de passe avec des caractères aléatoires
         while len(password) < length:
-            password.append(random.choice(available_chars))
+            password.append(secrets.choice(available_chars))
 
         # Convertir en chaîne de caractères
         password = ''.join(password)
@@ -70,12 +70,12 @@ def generate_password(
     # Si les répétitions ne sont pas autorisées, on vérifie qu'il n'y en a pas
     if not allow_repetitions:
         while has_repetitions(password):
-            password = ''.join(random.choice(available_chars) for _ in range(length))
+            password = ''.join(secrets.choice(available_chars) for _ in range(length))
 
     # Si les séries ne sont pas autorisées, on vérifie qu'il n'y en a pas
     if not allow_series:
         while has_series(password):
-            password = ''.join(random.choice(available_chars) for _ in range(length))
+            password = ''.join(secrets.choice(available_chars) for _ in range(length))
 
     return password
 
