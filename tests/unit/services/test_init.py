@@ -21,8 +21,8 @@ def test_session_scope_rollback(session):
                 question="Est-ce que la session fait rollback ?"
             )
             new_session.add(question)
-            raise Exception("Erreur volontaire pour déclencher le rollback")
-    except Exception:
+            raise RuntimeError("This is a test error")
+    except RuntimeError:
         pass
 
     result = session.query(Question).all()

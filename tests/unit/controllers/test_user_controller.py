@@ -1,5 +1,4 @@
 import hashlib
-from tests.unit.testing_utils import generate_password
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +8,7 @@ from controllers.user_controller import (generate_substrings,
                                          get_user_details, get_user_info,
                                          get_users, patch_user, post_users)
 from models.user import StatusEnum
+from tests.unit.testing_utils import generate_password
 
 
 @pytest.mark.usefixtures("session")
@@ -119,8 +119,8 @@ class TestGetUserDetails:
 
     def test_get_user_details(self):
         # Given
-        id = 1
-        kwargs = {"userId": id}
+        user_id = 1
+        kwargs = {"userId": user_id}
         user = {"id": 1, "username": "username"}
         self.mock_get_details.return_value = user
 
@@ -132,7 +132,7 @@ class TestGetUserDetails:
         assert isinstance(response, dict)
         assert "user" in response
         assert response["user"] == user
-        self.mock_get_details.assert_called_with(id)
+        self.mock_get_details.assert_called_with(user_id)
 
     def test_get_user_details_no_kwargs(self):
         # When
@@ -177,10 +177,10 @@ class TestPatchUser:
 
     def test_patch_user(self):
         # Given
-        id = 1
+        user_id = 1
         status = StatusEnum.READY
         kwargs = {
-            "userId": id,
+            "userId": user_id,
             "body": {
                 "status": status
             }
@@ -197,7 +197,7 @@ class TestPatchUser:
         assert "user" in response
         assert response["user"] == user
         self.mock_get_details.assert_not_called()
-        self.mock_update.assert_called_with(id, status)
+        self.mock_update.assert_called_with(user_id, status)
 
     def test_patch_user_no_kwargs(self):
         # When
@@ -212,9 +212,9 @@ class TestPatchUser:
 
     def test_patch_user_invalid_kwargs(self):
         # Given
-        id = 1
+        user_id = 1
         kwargs = {
-            "userId": id,
+            "userId": user_id,
         }
 
         # When
@@ -229,9 +229,9 @@ class TestPatchUser:
 
     def test_patch_user_no_status(self):
         # Given
-        id = 1
+        user_id = 1
         kwargs = {
-            "userId": id,
+            "userId": user_id,
             "body": {
                 "something": "useless"
             }
@@ -251,15 +251,15 @@ class TestPatchUser:
         assert isinstance(response, dict)
         assert "user" in response
         assert response["user"] == user
-        self.mock_get_details.assert_called_with(id)
+        self.mock_get_details.assert_called_with(user_id)
         self.mock_update.assert_not_called()
 
     def test_patch_user_not_found(self):
         # Given
-        id = 1
+        user_id = 1
         status = StatusEnum.READY
         kwargs = {
-            "userId": id,
+            "userId": user_id,
             "body": {
                 "status": status
             }
@@ -274,7 +274,7 @@ class TestPatchUser:
         assert isinstance(response, dict)
         assert "message" in response
         self.mock_get_details.assert_not_called()
-        self.mock_update.assert_called_with(id, status)
+        self.mock_update.assert_called_with(user_id, status)
 
 
 @pytest.mark.usefixtures("session")

@@ -1,6 +1,7 @@
 import secrets
 import string
 
+
 def generate_password(
         length=10,
         use_upper=True,
@@ -28,21 +29,6 @@ def generate_password(
                 "Error : unavailable characters"
             )
         length -= len(word)
-
-    def has_series(password):
-        for i in range(len(password) - 2):
-            if (
-                (ord(password[i + 1]) - ord(password[i]) == 1) and
-                (ord(password[i + 2]) - ord(password[i + 1]) == 1)
-            ):
-                return True
-        return False
-
-    def has_repetitions(password):
-        return (
-            any(password[i] == password[i + 1] == password[i + 2]
-                for i in range(len(password) - 2))
-        )
 
     password = ""
 
@@ -84,3 +70,22 @@ def generate_password(
             )
 
     return password
+
+
+def has_series(password):
+    """ Check for any series """
+    for i in range(len(password) - 2):
+        if (
+            (ord(password[i + 1]) - ord(password[i]) == 1) and
+            (ord(password[i + 2]) - ord(password[i + 1]) == 1)
+        ):
+            return True
+    return False
+
+
+def has_repetitions(password):
+    """ Check for any repetition """
+    return (
+        any(password[i] == password[i + 1] == password[i + 2]
+            for i in range(len(password) - 2))
+    )

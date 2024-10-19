@@ -7,7 +7,7 @@ from flask import session
 from models.user import StatusEnum
 from routes import (check_mail, check_phone, check_phone_auth, confirm_token,
                     handle_phone_number)
-import random
+
 
 @pytest.mark.usefixtures("session")
 class TestCheckMail:

@@ -87,17 +87,17 @@ def get_by_question(question: str):
         }
 
 
-def get_by_question_id(questionId: int):
+def get_by_question_id(question_id: int):
     """
     Get users which have the related questionId
-    :param questionId: ID if the question
+    :param question_id: ID if the question
     :return: The list of users which have responded to the question
     """
 
     with session_scope() as session:
         query = (
             session.query(UserQuestion)
-            .filter(UserQuestion.question_id == questionId)
+            .filter(UserQuestion.question_id == question_id)
         )
 
         output = []

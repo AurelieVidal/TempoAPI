@@ -6,7 +6,7 @@ import requests
 from flask_mail import Message
 
 from utils.utils import call_to_api, generate_confirmation_token, handle_email
-import random
+
 
 @pytest.mark.usefixtures("session")
 class TestHandleEmail:

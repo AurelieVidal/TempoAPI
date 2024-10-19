@@ -174,7 +174,7 @@ def resend_email(**kwargs):
         "email": user["email"]
     }
     email = user.get("email")
-    id = user.get("id")
+    user_id = user.get("id")
 
     token = session.get('email_token')
     if not token:
@@ -195,7 +195,7 @@ def resend_email(**kwargs):
     session.pop('email_token', None)
 
     try:
-        handle_email(user_email=email, username=username, user_id=id)
+        handle_email(user_email=email, username=username, user_id=user_id)
     except Exception:
         return {"message": "An error occurred while sending the email"}, 500
 

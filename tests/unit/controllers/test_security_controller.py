@@ -64,8 +64,8 @@ class TestGetQuestionById:
 
     def test_get_question_by_id(self):
         # Given
-        id = 1
-        kwargs = {"questionId": id}
+        question_id = 1
+        kwargs = {"questionId": question_id}
         question = {"id": 1, "question": "question ?"}
         self.mock_question_by_id.return_value = question
 
@@ -77,7 +77,7 @@ class TestGetQuestionById:
         assert isinstance(response, dict)
         assert "question" in response
         assert response["question"] == question
-        self.mock_question_by_id.assert_called_with(id)
+        self.mock_question_by_id.assert_called_with(question_id)
 
     def test_get_question_by_id_no_kwargs(self):
         # When
@@ -103,8 +103,8 @@ class TestGetQuestionById:
 
     def test_get_question_by_id_not_found(self):
         # Given
-        id = 1
-        kwargs = {"questionId": id}
+        question_id = 1
+        kwargs = {"questionId": question_id}
         self.mock_question_by_id.return_value = None
 
         # When
@@ -114,7 +114,7 @@ class TestGetQuestionById:
         assert status_code == 404
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_question_by_id.assert_called_with(id)
+        self.mock_question_by_id.assert_called_with(question_id)
 
 
 @pytest.mark.usefixtures("session")
@@ -556,7 +556,7 @@ class TestResendEmail:
                     dict(email_token="token")
             ) as mock_session:
                 # When
-                response, status_code, headers = resend_email(**kwargs)
+                _, status_code, _ = resend_email(**kwargs)
 
                 # Then
                 assert status_code == 202
@@ -589,7 +589,7 @@ class TestResendEmail:
                     dict(email_token="token")
             ) as mock_session:
                 # When
-                response, status_code, headers = resend_email(**kwargs)
+                response, status_code, _ = resend_email(**kwargs)
 
                 # Then
                 assert status_code == 202
@@ -661,7 +661,7 @@ class TestResendEmail:
                     dict(email_token=None)
             ):
                 # When
-                response, status_code, headers = resend_email(**kwargs)
+                _, status_code, _ = resend_email(**kwargs)
 
                 # Then
                 assert status_code == 202
@@ -693,7 +693,7 @@ class TestResendEmail:
                     dict(email_token=None)
             ):
                 # When
-                response, status_code, headers = resend_email(**kwargs)
+                response, status_code, _ = resend_email(**kwargs)
 
                 # Then
                 assert status_code == 202
