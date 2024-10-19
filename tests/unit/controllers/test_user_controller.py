@@ -1,7 +1,9 @@
-from unittest.mock import patch
-import pytest
+import hashlib
 import secrets
 import string
+from unittest.mock import patch
+
+import pytest
 
 from controllers.user_controller import (generate_substrings,
                                          get_user_by_username,
@@ -16,9 +18,10 @@ def generate_password(
         use_lower=True,
         use_digits=True,
         allow_repetitions=False,
-        allow_series=False
+        allow_series=False,
+        word=None,
 ):
-    # Construction des caractères disponibles en fonction des critères
+    """ Generate a password for tests purposes """
     available_chars = ""
     if use_upper:
         available_chars += string.ascii_uppercase
@@ -27,20 +30,30 @@ def generate_password(
     if use_digits:
         available_chars += string.digits
 
-    # Vérification des options sélectionnées
     if not available_chars:
         raise ValueError("At least one character type must be selected.")
 
-    # Fonction pour vérifier les séries (abc, 123, etc.)
+    if word:
+        if not all(c in available_chars for c in word):
+            raise ValueError(
+                "Error : unavailable characters"
+            )
+        length -= len(word)
+
     def has_series(password):
         for i in range(len(password) - 2):
-            if (ord(password[i + 1]) - ord(password[i]) == 1) and (ord(password[i + 2]) - ord(password[i + 1]) == 1):
+            if (
+                (ord(password[i + 1]) - ord(password[i]) == 1) and
+                (ord(password[i + 2]) - ord(password[i + 1]) == 1)
+            ):
                 return True
         return False
 
-    # Fonction pour vérifier les répétitions (ex: xxx)
     def has_repetitions(password):
-        return any(password[i] == password[i + 1] == password[i + 2] for i in range(len(password) - 2))
+        return (
+            any(password[i] == password[i + 1] == password[i + 2]
+                for i in range(len(password) - 2))
+        )
 
     password = ""
 
@@ -52,7 +65,6 @@ def generate_password(
 
         password = []
 
-        # Ajout forcé d'au moins une majuscule, une minuscule et un chiffre si requis
         if use_upper:
             password.append(secrets.choice(string.ascii_uppercase))
         if use_lower:
@@ -60,22 +72,27 @@ def generate_password(
         if use_digits:
             password.append(secrets.choice(string.digits))
 
-        # Compléter le reste du mot de passe avec des caractères aléatoires
         while len(password) < length:
             password.append(secrets.choice(available_chars))
 
-        # Convertir en chaîne de caractères
+        if word:
+            password.append(word)
+
         password = ''.join(password)
 
-    # Si les répétitions ne sont pas autorisées, on vérifie qu'il n'y en a pas
     if not allow_repetitions:
         while has_repetitions(password):
-            password = ''.join(secrets.choice(available_chars) for _ in range(length))
+            password = (
+                ''
+                .join(secrets.choice(available_chars) for _ in range(length))
+            )
 
-    # Si les séries ne sont pas autorisées, on vérifie qu'il n'y en a pas
     if not allow_series:
         while has_series(password):
-            password = ''.join(secrets.choice(available_chars) for _ in range(length))
+            password = (
+                ''
+                .join(secrets.choice(available_chars) for _ in range(length))
+            )
 
     return password
 
@@ -474,7 +491,14 @@ class TestPostUser:
         kwargs = {
             "body": {
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -506,7 +530,14 @@ class TestPostUser:
         kwargs = {
             "body": {
                 "username": "username",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -571,7 +602,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "device": "iphone",
                 "phone": "123456789"
             }
@@ -598,7 +636,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -630,7 +675,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -662,7 +714,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "response": "answer"
@@ -694,7 +753,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -726,7 +792,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -761,7 +834,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -795,11 +875,26 @@ class TestPostUser:
 
     def test_post_user_invalid_password_repetition(self):
         # Given
+        print(generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=True,
+                    allow_series=False
+                ))
         kwargs = {
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "aaazertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=True,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -832,11 +927,26 @@ class TestPostUser:
 
     def test_post_user_invalid_password_serie(self):
         # Given
+        print(generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=True
+                ))
         kwargs = {
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "abczertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=True
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -873,7 +983,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azerty",
+                "password": generate_password(
+                    length=10,
+                    use_upper=False,
+                    use_lower=True,
+                    use_digits=False,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -910,7 +1027,15 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "usernameA42",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False,
+                    word="username"
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -951,7 +1076,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,
@@ -989,11 +1121,27 @@ class TestPostUser:
 
     def test_post_user_previously_hacked_password(self):
         # Given
+        password = generate_password(
+            length=10,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=False,
+            allow_series=False
+        )
+
+        hashed_password = (
+            hashlib.sha1(password.encode("utf-8"))
+            .hexdigest()
+            .upper()
+        )
+        hash_end = hashed_password[5:]
+
         kwargs = {
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": password,
                 "questions": [
                     {
                         "questionId": 1,
@@ -1004,15 +1152,15 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
+
+        self.mock_get_by_id.return_value = {"id": 1}
         self.mock_get_by_username.return_value = None
         self.mock_get_user_info.return_value = ["username", "fake"]
-        self.mock_call_to_api.return_value.text.splitlines.return_value = [
-            "8E91F26BB90232FC6A1374E750B4FE04BE1:ok"
-        ]
+
         self.mock_env_variable.return_value = "pepper"
+        self.mock_call_to_api.return_value.text.splitlines.return_value = [
+            f"{hash_end}:ok"
+        ]
 
         # When
         response, status_code = post_users(**kwargs)
@@ -1021,6 +1169,7 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Password is too weak."
         self.mock_get_by_id.assert_called_with(1)
         self.mock_get_by_username.assert_called_with("username")
         self.mock_get_user_info.assert_called_with(
@@ -1039,7 +1188,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,

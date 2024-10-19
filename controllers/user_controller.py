@@ -192,7 +192,6 @@ def post_users(**kwargs):
                 "and a lowercase letter."
             )
         }, 400
-    print("password is compliant")
     # Checking is password contains user information
     checking_list = get_user_info(username, email)
     for item in checking_list:
@@ -209,21 +208,14 @@ def post_users(**kwargs):
     )
     hash_beginning = hashed_password[0:5]
     hash_end = hashed_password[5:]
-    print("HASH END")
-    print(hash_end)
     hipb_url = os.environ.get("HIPB_API_URL") + hash_beginning
-    print(os.environ.get("HIPB_API_URL"))
     response = call_to_api(hipb_url)
     if not response:
         return {
             "message": "Password checking feature is unavailable."
         }, 500
-    print(response)
-    print(response.text)
     response = response.text.splitlines()
-    print(response)
     for line in response:
-        print("LINE", line)
         if line.split(":")[0] == hash_end:
             return {"message": "Password is too weak."}, 400
 
@@ -239,7 +231,6 @@ def post_users(**kwargs):
     # Hash the password
     pepper = os.environ.get("PEPPER")
     password = pepper + password + salt
-    print(password)
     password = hashlib.sha256(password.encode("utf-8")).hexdigest().upper()
 
     # Create the user
