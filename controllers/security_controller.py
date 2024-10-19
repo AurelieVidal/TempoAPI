@@ -33,7 +33,7 @@ def get_question_by_id(**kwargs):
     """
 
     id = kwargs.get("questionId")
-    if not id or type(id) != int:
+    if not id or not isinstance(id, int):
         return {"message": "Input error, questionId is not defined"}, 400
 
     output = get_by_id(id)
@@ -130,7 +130,7 @@ def delete_question(**kwargs):
     """
 
     id = kwargs.get("questionId")
-    if not id or type(id) != int:
+    if not id or not isinstance(id, int):
         return {"message": "Input error, body is not defined"}, 400
 
     users = get_by_question_id(id)
