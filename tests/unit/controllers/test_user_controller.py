@@ -352,6 +352,14 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
+        self.valid_password = generate_password(
+            length=10,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=False,
+            allow_series=False
+        ),
 
     def test_post_user(self):
         # Given
@@ -407,14 +415,7 @@ class TestPostUser:
         kwargs = {
             "body": {
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "questionId": 1,
@@ -446,14 +447,7 @@ class TestPostUser:
         kwargs = {
             "body": {
                 "username": "username",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "questionId": 1,
@@ -518,14 +512,7 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "device": "iphone",
                 "phone": "123456789"
             }
@@ -552,14 +539,7 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "questionId": 1,
@@ -591,14 +571,7 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "questionId": 1,
@@ -630,14 +603,7 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "response": "answer"
@@ -669,14 +635,7 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
+                "password": self.valid_password,
                 "questions": [
                     {
                         "questionId": 1,
