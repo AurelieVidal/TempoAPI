@@ -330,10 +330,7 @@ class TestPostUser:
         self.mock_handle_email = self.patch_handle_email.start()
         request.addfinalizer(self.patch_handle_email.stop)
 
-    def test_post_user(self):
-        # Given
-        status = StatusEnum.READY
-        kwargs = {
+        self.valid_kwargs = {
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
@@ -355,6 +352,11 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
+
+    def test_post_user(self):
+        # Given
+        status = StatusEnum.READY
+        kwargs = self.valid_kwargs
         user = {"id": 1, "username": "username", "status": status}
         self.mock_get_by_id.return_value = {
             "id": 1
@@ -702,28 +704,7 @@ class TestPostUser:
 
     def test_post_user_question_not_found(self):
         # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
+        kwargs = self.valid_kwargs
         self.mock_get_by_id.return_value = None
 
         # When
@@ -744,28 +725,7 @@ class TestPostUser:
     def test_post_user_username_exists(self):
         # Given
         status = StatusEnum.READY
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
+        kwargs = self.valid_kwargs
         user = {"id": 1, "username": "username", "status": status}
         self.mock_get_by_id.return_value = {
             "id": 1
@@ -986,28 +946,7 @@ class TestPostUser:
 
     def test_post_user_api_call_failed(self):
         # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
+        kwargs = self.valid_kwargs
         self.mock_get_by_id.return_value = {
             "id": 1
         }
@@ -1098,28 +1037,7 @@ class TestPostUser:
     def test_post_user_handle_email_exception(self):
         # Given
         status = StatusEnum.READY
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
+        kwargs = self.valid_kwargs
         user = {"id": 1, "username": "username", "status": status}
         self.mock_get_by_id.return_value = {
             "id": 1
