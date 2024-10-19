@@ -1,17 +1,13 @@
-from services.question import (
-    create,
-    all_questions,
-    get_by_id,
-    get_random_questions,
-    delete,
-    get_by_question,
-    get_by_question_id,
-    delete_user_question
-)
-from services.user import get_details, get_by_username_phone
 import re
+
+from flask import render_template, request, session
+
+from services.question import (all_questions, create, delete,
+                               delete_user_question, get_by_id,
+                               get_by_question, get_by_question_id,
+                               get_random_questions)
+from services.user import get_by_username, get_details
 from utils.utils import handle_email
-from flask import request, render_template, session
 
 
 def get_questions(**kwargs):
@@ -22,6 +18,8 @@ def get_questions(**kwargs):
     """
 
     output = all_questions()
+    if not output:
+        output = []
 
     return {"questions": output}, 200
 
@@ -35,6 +33,8 @@ def get_question_by_id(**kwargs):
     """
 
     id = kwargs.get("questionId")
+    if not id or not isinstance(id, int):
+        return {"message": "Input error, questionId is not defined"}, 400
 
     output = get_by_id(id)
 
@@ -53,6 +53,8 @@ def get_question_by_question(**kwargs):
     """
 
     question = kwargs.get("question")
+    if not question:
+        return {"message": "Input error, question is not defined"}, 400
 
     output = get_by_question(question)
 
@@ -71,6 +73,8 @@ def get_random_list(**kwargs):
     """
 
     number = kwargs.get("number")
+    if not number:
+        return {"message": "Input error, number is not defined"}, 400
 
     total = len(all_questions())
     if number > total:
@@ -90,7 +94,12 @@ def post_question(**kwargs):
     """
 
     payload = kwargs.get("body")
+    if not payload:
+        return {"message": "Input error, body is not defined"}, 400
+
     question_list = payload.get("questions")
+    if not question_list:
+        return {"message": "Input error, questions is not defined"}, 400
 
     pattern = r'^[A-Z].*\?$'
     format_question = all(
@@ -121,6 +130,8 @@ def delete_question(**kwargs):
     """
 
     id = kwargs.get("questionId")
+    if not id or not isinstance(id, int):
+        return {"message": "Input error, body is not defined"}, 400
 
     users = get_by_question_id(id)
     for user in users:
@@ -149,11 +160,21 @@ def resend_email(**kwargs):
     """
 
     username = kwargs.get("username")
-    user = get_by_username_phone(username)
+    if not username:
+        return {"message": "Input error, username is not defined"}, 400
+
+    user = get_by_username(username)
     if not user:
         return {"message": f"User with username {username} not found"}, 404
-    email = user["email"]
-    id = user["id"]
+    user = get_details(user["id"])
+    user = {
+        "id": user["id"],
+        "username": user["username"],
+        "phone": user["phone"],
+        "email": user["email"]
+    }
+    email = user.get("email")
+    user_id = user.get("id")
 
     token = session.get('email_token')
     if not token:
@@ -161,7 +182,7 @@ def resend_email(**kwargs):
         if request.accept_mimetypes.accept_html:
             return (
                 render_template('email_resend_template.html'),
-                200,
+                202,
                 conforming_response_header()
             )
 
@@ -174,15 +195,15 @@ def resend_email(**kwargs):
     session.pop('email_token', None)
 
     try:
-        handle_email(user_email=email, username=username, user_id=id)
+        handle_email(user_email=email, username=username, user_id=user_id)
     except Exception:
-        return {"message": "An error occurred while sending the email"}
+        return {"message": "An error occurred while sending the email"}, 500
 
     # Resend the email depending on response types (json or HTML)
     if request.accept_mimetypes.accept_html:
         return (
             render_template('email_resend_template.html'),
-            200,
+            202,
             conforming_response_header()
         )
 

@@ -1,8 +1,10 @@
-from . import session_scope
-from models.user import User, StatusEnum
-from models.question import Question
-from models.user_question import UserQuestion
 import json
+
+from models.question import Question
+from models.user import StatusEnum, User
+from models.user_question import UserQuestion
+
+from . import session_scope
 
 
 def user_list():
@@ -44,30 +46,6 @@ def get_by_username(username):
         return {
             "id": user.id,
             "username": user.username,
-            "email": user.email
-        }
-
-
-def get_by_username_phone(username):
-    """
-    Get user by username with phone details
-    :param username: The username we search
-    :return: The corresponding user
-    """
-
-    with session_scope() as session:
-        query = session.query(User)
-        query = query.filter(User.username == username)
-        user = query.first()
-        if not user:
-            return
-
-        print("EMAIL", user.email)
-
-        return {
-            "id": user.id,
-            "username": user.username,
-            "phone": user.phone,
             "email": user.email
         }
 

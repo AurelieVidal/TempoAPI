@@ -7,9 +7,9 @@ Create Date: 2024-09-12 11:25:41.169382
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '20c0aae27013'
@@ -27,12 +27,13 @@ def upgrade() -> None:
                     sa.UniqueConstraint('question')
                     )
     op.create_table('user_question',
+                    sa.Column('id', sa.Integer(), nullable=False),
                     sa.Column('user_id', sa.Integer(), nullable=False),
                     sa.Column('question_id', sa.Integer(), nullable=False),
                     sa.Column('response', sa.String(), nullable=False),
                     sa.ForeignKeyConstraint(['question_id'], ['question.id']),
                     sa.ForeignKeyConstraint(['user_id'], ['user.id']),
-                    sa.PrimaryKeyConstraint('user_id', 'question_id')
+                    sa.PrimaryKeyConstraint('id')
                     )
     op.add_column('user', sa.Column('devices', sa.String(), nullable=True))
 

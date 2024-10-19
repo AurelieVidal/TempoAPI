@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+
 from extensions import db
 
 

@@ -1,6 +1,7 @@
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'e65353d6311a'
@@ -59,10 +60,10 @@ def downgrade() -> None:
             'DELETED',
             name='status_enum_old'
         ),
-        existing_nullable=False
+        existing_nullable=False,
+        postgresql_using="status::text::status_enum_old"
     )
 
     op.execute("DROP TYPE status_enum")
     op.execute("ALTER TYPE status_enum_old RENAME TO status_enum")
-
     # ### end Alembic commands ###

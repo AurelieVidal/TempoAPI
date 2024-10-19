@@ -1,7 +1,9 @@
-from . import session_scope
+from sqlalchemy import func
+
 from models.question import Question
 from models.user_question import UserQuestion
-from sqlalchemy import func
+
+from . import session_scope
 
 
 def create(question: str):
@@ -85,17 +87,17 @@ def get_by_question(question: str):
         }
 
 
-def get_by_question_id(questionId: str):
+def get_by_question_id(question_id: int):
     """
     Get users which have the related questionId
-    :param questionId: ID if the question
+    :param question_id: ID if the question
     :return: The list of users which have responded to the question
     """
 
     with session_scope() as session:
         query = (
             session.query(UserQuestion)
-            .filter(UserQuestion.question_id == questionId)
+            .filter(UserQuestion.question_id == question_id)
         )
 
         output = []
@@ -163,7 +165,7 @@ def delete_user_question(question_id: int):
     with session_scope() as session:
         relationships_to_delete = (
             session.query(UserQuestion)
-            .filter(UserQuestion == question_id)
+            .filter(UserQuestion.question_id == question_id)
         )
 
         for relationship in relationships_to_delete.all():

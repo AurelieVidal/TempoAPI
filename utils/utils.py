@@ -1,10 +1,12 @@
 import os
+
 import requests
-from retry import retry
-from flask_mail import Message
-from app import mail
 from flask import render_template
+from flask_mail import Message
 from itsdangerous import URLSafeTimedSerializer
+from retry import retry
+
+from app import mail
 
 
 def handle_email(user_email: str, username: str, user_id: int):

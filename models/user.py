@@ -1,5 +1,6 @@
-from app import db
 import enum
+
+from app import db
 
 
 class StatusEnum(enum.Enum):
