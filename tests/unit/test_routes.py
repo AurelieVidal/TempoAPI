@@ -7,7 +7,7 @@ from flask import session
 from models.user import StatusEnum
 from routes import (check_mail, check_phone, check_phone_auth, confirm_token,
                     handle_phone_number)
-
+import random
 
 @pytest.mark.usefixtures("session")
 class TestCheckMail:
@@ -310,11 +310,19 @@ class TestConfirmToken:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
+        self.salt = ""
+        for _ in range(5):
+            random_integer = random.randint(97, 97 + 26 - 1)
+            is_capital = random.randint(0, 1)
+            random_integer = random_integer - 32 \
+                if is_capital == 1 else random_integer
+            self.salt += chr(random_integer)
+
         self.patch_secret_key = patch(
             "os.environ.get",
             side_effect=lambda key: {
                 'SECRET_KEY': 'test_secret_key',
-                'SECURITY_PASSWORD_SALT': 'test_salt'
+                'SECURITY_PASSWORD_SALT': self.salt
             }[key]
         )
         self.mock_secret_key = self.patch_secret_key.start()
@@ -345,7 +353,7 @@ class TestConfirmToken:
         self.mock_serializer.assert_called_once_with("test_secret_key")
         self.mock_serializer_instance.loads.assert_called_once_with(
             token,
-            salt='test_salt',
+            salt=self.salt,
             max_age=300
         )
         assert email == expected_email
@@ -364,7 +372,7 @@ class TestConfirmToken:
         self.mock_serializer.assert_called_once_with("test_secret_key")
         self.mock_serializer_instance.loads.assert_called_once_with(
             token,
-            salt='test_salt',
+            salt=self.salt,
             max_age=300
         )
         assert email is False
@@ -383,7 +391,7 @@ class TestConfirmToken:
         self.mock_serializer.assert_called_once_with("test_secret_key")
         self.mock_serializer_instance.loads.assert_called_once_with(
             token,
-            salt='test_salt',
+            salt=self.salt,
             max_age=300
         )
         assert email is False

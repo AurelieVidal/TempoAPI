@@ -6,7 +6,7 @@ import requests
 from flask_mail import Message
 
 from utils.utils import call_to_api, generate_confirmation_token, handle_email
-
+import random
 
 @pytest.mark.usefixtures("session")
 class TestHandleEmail:
@@ -57,8 +57,16 @@ class TestGenerateConfirmationToken:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
+        self.salt = ""
+        for _ in range(5):
+            random_integer = random.randint(97, 97 + 26 - 1)
+            is_capital = random.randint(0, 1)
+            random_integer = random_integer - 32 \
+                if is_capital == 1 else random_integer
+            self.salt += chr(random_integer)
+
         os.environ["SECRET_KEY"] = "test_secret"
-        os.environ["SECURITY_PASSWORD_SALT"] = "test_salt"
+        os.environ["SECURITY_PASSWORD_SALT"] = self.salt
 
         self.patch_serializer = patch("utils.utils.URLSafeTimedSerializer")
         self.mock_serializer = self.patch_serializer.start()

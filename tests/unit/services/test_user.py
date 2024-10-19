@@ -3,6 +3,7 @@ from models.user import StatusEnum, User
 from models.user_question import UserQuestion
 from services.user import (add_question_to_user, create, get_by_username,
                            get_details, update, user_list)
+from tests.unit.testing_utils import generate_password
 
 
 class TestUserList:
@@ -223,7 +224,14 @@ class TestCreate:
         result = create(
             username="username",
             email="fake@email.com",
-            password="abcdef",
+            password=generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+            ),
             salt="abcd",
             device="iphone",
             phone="0102030405"
