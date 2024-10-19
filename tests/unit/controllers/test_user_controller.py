@@ -1,12 +1,83 @@
 from unittest.mock import patch
-
 import pytest
+import random
+import string
 
 from controllers.user_controller import (generate_substrings,
                                          get_user_by_username,
                                          get_user_details, get_user_info,
                                          get_users, patch_user, post_users)
 from models.user import StatusEnum
+
+
+def generate_password(
+        length=10,
+        use_upper=True,
+        use_lower=True,
+        use_digits=True,
+        allow_repetitions=False,
+        allow_series=False
+):
+    # Construction des caractères disponibles en fonction des critères
+    available_chars = ""
+    if use_upper:
+        available_chars += string.ascii_uppercase
+    if use_lower:
+        available_chars += string.ascii_lowercase
+    if use_digits:
+        available_chars += string.digits
+
+    # Vérification des options sélectionnées
+    if not available_chars:
+        raise ValueError("At least one character type must be selected.")
+
+    # Fonction pour vérifier les séries (abc, 123, etc.)
+    def has_series(password):
+        for i in range(len(password) - 2):
+            if (ord(password[i + 1]) - ord(password[i]) == 1) and (ord(password[i + 2]) - ord(password[i + 1]) == 1):
+                return True
+        return False
+
+    # Fonction pour vérifier les répétitions (ex: xxx)
+    def has_repetitions(password):
+        return any(password[i] == password[i + 1] == password[i + 2] for i in range(len(password) - 2))
+
+    password = ""
+
+    while not password or \
+            (allow_series and not has_series(password)) or \
+            (allow_repetitions and not has_repetitions(password)) or \
+            (not allow_series and has_series(password)) or \
+            (not allow_repetitions and has_repetitions(password)):
+
+        password = []
+
+        # Ajout forcé d'au moins une majuscule, une minuscule et un chiffre si requis
+        if use_upper:
+            password.append(random.choice(string.ascii_uppercase))
+        if use_lower:
+            password.append(random.choice(string.ascii_lowercase))
+        if use_digits:
+            password.append(random.choice(string.digits))
+
+        # Compléter le reste du mot de passe avec des caractères aléatoires
+        while len(password) < length:
+            password.append(random.choice(available_chars))
+
+        # Convertir en chaîne de caractères
+        password = ''.join(password)
+
+    # Si les répétitions ne sont pas autorisées, on vérifie qu'il n'y en a pas
+    if not allow_repetitions:
+        while has_repetitions(password):
+            password = ''.join(random.choice(available_chars) for _ in range(length))
+
+    # Si les séries ne sont pas autorisées, on vérifie qu'il n'y en a pas
+    if not allow_series:
+        while has_series(password):
+            password = ''.join(random.choice(available_chars) for _ in range(length))
+
+    return password
 
 
 @pytest.mark.usefixtures("session")
@@ -335,7 +406,14 @@ class TestPostUser:
             "body": {
                 "username": "username",
                 "email": "fake@email.com",
-                "password": "azertyAA2",
+                "password": generate_password(
+                    length=10,
+                    use_upper=True,
+                    use_lower=True,
+                    use_digits=True,
+                    allow_repetitions=False,
+                    allow_series=False
+                ),
                 "questions": [
                     {
                         "questionId": 1,

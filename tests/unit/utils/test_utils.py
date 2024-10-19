@@ -96,7 +96,7 @@ class TestCallToApi:
 
     def test_call_to_api_success(self):
         # Given
-        url = "http://api.example.com"
+        url = "https://api.example.com"
         mock_response = self.mock_get.return_value
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": "some_data"}
@@ -111,7 +111,7 @@ class TestCallToApi:
 
     def test_call_to_api_failure(self):
         # Given
-        url = "http://api.example.com"
+        url = "https://api.example.com"
         self.mock_get.side_effect = requests.RequestException("Error occurred")
 
         # When
