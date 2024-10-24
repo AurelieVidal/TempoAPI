@@ -85,11 +85,12 @@ class TestBasicAuth:
         # Given
         username_input = "username"
         password_input = "password"
+        wrong_input = "wrong"
         self.mock_env_variable.return_value = "pepper"
         self.mock_get_by_username.return_value = {"id": 1}
         self.mock_get_security_infos.return_value = {
             "salt": "salt",
-            "password": "abcdef"
+            "password": wrong_input
         }
 
         # When

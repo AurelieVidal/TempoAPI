@@ -225,4 +225,7 @@ def conforming_response_header():
 
 
 def check_user(**kwargs):
+    """
+    Check if a user can authenticate
+    """
     return {"message": "User successfully authenticated"}

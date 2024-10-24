@@ -16,7 +16,7 @@ def basic_auth(username, password):
         if not user:
             return None
 
-        infos = get_security_infos(id=user.get('id'))
+        infos = get_security_infos(user_id=user.get('id'))
         pepper = os.environ.get("PEPPER")
         to_hash = pepper + password + infos.get("salt")
         hashed_password = (
