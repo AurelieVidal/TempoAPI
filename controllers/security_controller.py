@@ -224,7 +224,7 @@ def conforming_response_header():
     return {'Content-Type': 'application/json'}
 
 
-def check_user(**kwargs):
+def check_user():
     """
     Check if a user can authenticate
     """
