@@ -2,7 +2,7 @@ from models.question import Question
 from models.user import StatusEnum, User
 from models.user_question import UserQuestion
 from services.user import (add_question_to_user, create, get_by_username,
-                           get_details, update, user_list)
+                           get_details, get_security_infos, update, user_list)
 from tests.unit.testing_utils import generate_password
 
 
@@ -229,3 +229,33 @@ class TestAddQuestionToUser:
         user_question = session.query(UserQuestion).first()
         assert user_question.question_id == 1
         assert user_question.user_id == 1
+
+
+class TestGetSecurityInfos:
+
+    def test_get_security_infos(self, session):
+        # Given
+        user1 = create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
+        session.commit()
+
+        # When
+        result = get_security_infos(user1.id)
+
+        # Then
+        assert result == {
+            "salt": "abcd",
+            "password": "password"
+        }
+
+    def test_get_details_user_not_found(self, session):
+        # Given
+        create_user(session, "username", "fake@email.com")
+        create_user(session, "username2", "fake@email.com")
+        session.commit()
+
+        # When
+        result = get_security_infos(50)
+
+        # Then
+        assert not result

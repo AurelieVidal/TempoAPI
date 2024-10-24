@@ -222,3 +222,7 @@ def conforming_response_header():
     if request.accept_mimetypes.accept_html:
         return {'Content-Type': 'text/html'}
     return {'Content-Type': 'application/json'}
+
+
+def check_user(**kwargs):
+    return {"message": "User successfully authenticated"}

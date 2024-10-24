@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from controllers.security_controller import (conforming_response_header,
+from controllers.security_controller import (check_user,
+                                             conforming_response_header,
                                              delete_question,
                                              get_question_by_id,
                                              get_question_by_question,
@@ -774,3 +775,14 @@ class TestConformingResponseHeader:
 
             # Then
             assert response_header == {'Content-Type': 'application/json'}
+
+
+@pytest.mark.usefixtures("session")
+class TestCheckUser:
+
+    def test_check_user(self, test_app):
+        # When
+        response = check_user()
+
+        # Then
+        assert response == {"message": "User successfully authenticated"}
