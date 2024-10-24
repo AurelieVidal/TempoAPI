@@ -379,12 +379,44 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Security
+  /security/check-user:
+    get:
+      summary: Check if a user can authenticate
+      operationId: controllers.security_controller.check_user
+      security:
+        - basic: [ ]
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '401':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
 tags:
   - name: Users
     description: Everything about users
   - name: Security
     description: Everything used for security purposes
 components:
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+      x-basicInfoFunc: authentication.basic_auth
   schemas:
     Error:
       type: object
@@ -392,6 +424,12 @@ components:
         message:
           type: string
           example: "failed"
+    Accepted:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "User is successfully connected"
     User:
       type: object
       properties:

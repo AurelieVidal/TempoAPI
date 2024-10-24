@@ -222,3 +222,10 @@ def conforming_response_header():
     if request.accept_mimetypes.accept_html:
         return {'Content-Type': 'text/html'}
     return {'Content-Type': 'application/json'}
+
+
+def check_user():
+    """
+    Check if a user can authenticate
+    """
+    return {"message": "User successfully authenticated"}

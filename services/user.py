@@ -185,3 +185,28 @@ def add_question_to_user(user_id: int, question_id: int, response: str):
         )
         session.add(new_user)
         session.commit()
+
+
+def get_security_infos(user_id: int):
+    """
+    Get security infos about a user
+    :param user_id: ID of the user
+    :return: A dict with all information about the user
+    """
+    with session_scope() as session:
+        query = (
+            session.query(
+                User.salt,
+                User.password
+            )
+        )
+        query = query.filter(User.id == user_id)
+        user = query.first()
+
+        if not user:
+            return
+
+        return {
+            "salt": user.salt,
+            "password": user.password
+        }
