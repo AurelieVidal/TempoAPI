@@ -22,7 +22,7 @@ def health_check(**kwargs):
     # HIBP
     hipb_url = os.environ.get("HIPB_API_URL") + "00000"
     hipb_response = call_to_api(hipb_url)
-    if not(hipb_response and hipb_response.status_code == 200):
+    if not (hipb_response and hipb_response.status_code == 200):
         return {
             "error": "API is DEGRADED, subj-ascent HIBP not accessible"
         }, 500
