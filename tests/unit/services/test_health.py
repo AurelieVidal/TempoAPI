@@ -1,11 +1,8 @@
 from services.health import select_1
 
 
-class TestUserList:
+class TestHealthSelect:
 
-    def test_user_list(self, session):
-        # When
+    def test_select_1(self, session):
+        # When, assert runs without errors
         select_1()
-
-        # Then
-        assert True

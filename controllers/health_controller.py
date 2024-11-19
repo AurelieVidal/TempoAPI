@@ -6,10 +6,9 @@ from services.health import select_1
 from utils.utils import call_to_api
 
 
-def health_check(**kwargs):
+def health_check():
     """
     Get the list of all users
-    :param kwargs: unused
     :return: A message if the API and subj-ascents are working
     """
 
