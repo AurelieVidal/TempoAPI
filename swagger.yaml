@@ -406,11 +406,26 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Security
+  /health:
+    get:
+      summary: Check if API is UP
+      operationId: controllers.health_controller.health_check
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Up'
+      tags:
+        - Health
 tags:
   - name: Users
     description: Everything about users
   - name: Security
     description: Everything used for security purposes
+  - name : Health
+    description: Check if API is UP
 components:
   securitySchemes:
     basic:
@@ -430,6 +445,12 @@ components:
         message:
           type: string
           example: "User is successfully connected"
+    Up:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "API is UP"
     User:
       type: object
       properties:
