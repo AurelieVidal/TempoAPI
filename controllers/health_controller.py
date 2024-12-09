@@ -8,7 +8,7 @@ from utils.utils import call_to_api
 
 def health_check():
     """
-    Get the list of all users
+    Get the current status of the API
     :return: A message if the API and subj-ascents are working
     """
 
@@ -26,4 +26,4 @@ def health_check():
             "error": "API is DEGRADED, subj-ascent HIBP not accessible"
         }, 500
 
-    return {"users": "API is UP"}, 200
+    return {"message": "API is UP"}, 200

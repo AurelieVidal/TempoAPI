@@ -41,7 +41,7 @@ class TestHealthCheck:
 
         # Then
         assert status_code == 200
-        assert response == {"users": "API is UP"}
+        assert response == {"message": "API is UP"}
         self.mock_select.assert_called_once_with()
         self.mock_call_to_api.assert_called_once_with("fake_url/00000")
 
