@@ -10,6 +10,9 @@ test:
 	MAIL_USERNAME=fake@example.com \
 	MAIL_PASSWORD=fakepassword \
 	SESSION_SECRET_KEY=fakesecretkey \
+	TWILIO_ACCOUNT_SID=account \
+	TWILIO_AUTH_TOKEN=token \
+	TWILIO_SERVICE=service \
 	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
 
 flake:
