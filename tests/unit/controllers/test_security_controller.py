@@ -2,12 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from controllers.security_controller import (
-    check_user,
-    get_question_by_id,
-    get_questions,
-    get_random_list
-)
+from controllers.security_controller import (check_user, get_question_by_id,
+                                             get_questions, get_random_list)
 from core.models import Question
 
 

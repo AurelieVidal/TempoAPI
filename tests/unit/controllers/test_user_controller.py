@@ -6,14 +6,10 @@ from unittest.mock import patch
 import pytest
 
 from adapters.hibp_client import HibpClient
-from controllers.user_controller import (
-    generate_substrings,
-    get_user_by_username,
-    get_user_details,
-    get_user_info,
-    get_users,
-    post_users
-)
+from controllers.user_controller import (generate_substrings,
+                                         get_user_by_username,
+                                         get_user_details, get_user_info,
+                                         get_users, post_users)
 from core.models import Question
 from core.models.role import Role, RoleEnum
 from core.models.user import StatusEnum, User

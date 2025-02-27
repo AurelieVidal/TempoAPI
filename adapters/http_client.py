@@ -1,6 +1,5 @@
 import requests
 from requests.exceptions import RequestException
-
 from retry import retry
 
 

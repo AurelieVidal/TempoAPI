@@ -1,6 +1,7 @@
-from unittest.mock import patch, MagicMock
-import requests
+from unittest.mock import MagicMock, patch
+
 import pytest
+import requests
 
 from adapters.http_client import HttpClient
 

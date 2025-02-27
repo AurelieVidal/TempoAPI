@@ -1,4 +1,5 @@
 import os
+
 from adapters.http_client import HttpClient
 
 

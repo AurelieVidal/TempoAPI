@@ -6,7 +6,6 @@ the project.
 
 from core.models import Question
 from core.repositories.base import BaseRepository
-
 from core.services.base import BaseService
 
 

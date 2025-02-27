@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app import app
+from core.models.user import StatusEnum, User
 from extensions import db
-from core.models.user import User, StatusEnum
 
 
 @pytest.fixture(scope="module")

@@ -3,7 +3,7 @@ import smtplib
 import uuid
 
 from flask import Blueprint, render_template, request, session
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from twilio.base.exceptions import TwilioRestException
 
 from adapters.twilio_client import TwilioClient

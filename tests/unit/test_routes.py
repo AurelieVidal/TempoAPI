@@ -9,7 +9,7 @@ from itsdangerous import BadSignature, SignatureExpired
 from twilio.base.exceptions import TwilioRestException
 
 from core.models.user import StatusEnum
-from routes import (check_mail, check_phone, confirm_token, resend_email)
+from routes import check_mail, check_phone, confirm_token, resend_email
 
 
 @pytest.mark.usefixtures("session")

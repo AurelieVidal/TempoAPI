@@ -1,4 +1,5 @@
-from typing import Type, TypeVar, Generic
+from typing import Generic, Type, TypeVar
+
 from app import db
 
 T = TypeVar("T")

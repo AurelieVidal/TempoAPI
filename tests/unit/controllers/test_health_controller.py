@@ -1,5 +1,5 @@
-from unittest.mock import Mock, patch
 import os
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError

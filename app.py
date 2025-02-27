@@ -44,6 +44,7 @@ mail = Mail(app.app)
 
 # Blueprint for visible routes
 from routes import routes
+
 app.app.register_blueprint(routes)
 
 # Initialize sessions
