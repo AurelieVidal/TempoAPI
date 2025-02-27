@@ -6,13 +6,16 @@ from extensions import db
 from core.models.user import User, StatusEnum
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def test_app():
     """
     Fixture to initialize testing application
     """
-    app.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.app.config['TESTING'] = True
+    app.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.app.config["TESTING"] = True
+    app.app.config["TWILIO_ACCOUNT_SID"] = "account_id"
+    app.app.config["TWILIO_AUTH_TOKEN"] = "token"
+    app.app.config["TWILIO_SERVICE"] = "service"
 
     with app.app.app_context():
         db.create_all()
@@ -22,7 +25,7 @@ def test_app():
         db.drop_all()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def session(test_app):
     """
     Fixture to handle a database session
