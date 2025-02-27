@@ -1,157 +1,180 @@
 import hashlib
+import json
 import os
 import random
 import re
+import smtplib
 
-from services.question import get_by_id
-from services.user import (add_question_to_user, create, get_by_username,
-                           get_details, update, user_list)
-from utils.utils import call_to_api, handle_email
+from adapters.hibp_client import HibpClient
+from core.models.role import RoleEnum
+from core.models.user import StatusEnum
+from core.tempo_core import tempo_core
+from utils.utils import handle_email
 
 
 def get_users(**kwargs):
     """
-    Get the list of all users
-    :param kwargs: unused
+    GET /users
+
+    Params :
+        - status in kwargs, to filter users on status
     :return: The list of all users
     """
+    status = kwargs.get("status")
 
-    output = user_list()
-    if not output:
-        output = []
+    if status:
+        users = tempo_core.user.get_list_by_key(status=status)
+    else:
+        users = tempo_core.user.get_all()
+    output = [user.to_dict() for user in users]
 
     return {"users": output}, 200
 
 
 def get_user_by_username(**kwargs):
     """
-    Retrieve a user by username
-    :param kwargs: A dict which contains the username
-    :keyword username: username of the user we search
-    :return: The corresponding user
+    GET /users/{username}
+
+    Params :
+        - username in kwargs, to filter users on username
+    :return: The user if it exists
     """
 
     username = kwargs.get("username")
-    if not username:
-        return {"message": "Input error, username is not defined"}, 400
 
-    output = get_by_username(username)
-    if not output:
+    user = tempo_core.user.get_instance_by_key(username=username)
+    if not user:
         return {"message": f"Username '{username}' not found"}, 404
 
-    return {"user": output}, 200
+    return {"user": user.to_dict()}, 200
 
 
 def get_user_details(**kwargs):
     """
-    Get details of a user
-    :param kwargs: A dict which contains the user ID
-    :keyword userId: ID of the user
+    GET /users/{userId}/details
+
+    Params :
+        - userId in kwargs, to filter users on their id
     :return: All detail information about a user
     """
+    user_id = kwargs.get("userId")
+    username = kwargs.get("user")
+    user = tempo_core.user.get_instance_by_key(username=username)
 
-    id = kwargs.get("userId")
-    if not id:
-        return {"message": "Input error, userId is not defined"}, 400
+    user_roles = [role.name for role in user.roles]
 
-    output = get_details(id)
+    output = tempo_core.user.get_details(user_id)
     if not output:
-        return {"message": f"User {id} not found or incomplete"}, 404
+        return {"message": f"User {user_id} not found or incomplete"}, 404
 
-    return {"user": output}, 200
-
-
-def patch_user(**kwargs):
-    """
-    Update a user's status or details.
-
-    :param kwargs: A dict which contains id of the user and
-    information to change
-    :keyword userId: The ID of the user
-    :keyword body.status: The updated status of the user
-    :return: The updated user
-
-    """
-
-    id = kwargs.get("userId")
-    payload = kwargs.get("body")
-    if not id:
-        return {"message": "Input error, userId is not defined"}, 400
-    if not payload:
-        return {"message": "Input error, body is not defined"}, 400
-
-    status = payload.get("status")
-    if not status:
-        user = get_details(id)
-        output = {
-            "id": id,
-            "username": user.get("username"),
-            "email": user.get("email")
-        }
+    # If user has ADMIN role, they can view the information for all users
+    if RoleEnum.ADMIN in user_roles:
         return {"user": output}, 200
 
-    output = update(id, status)
-    if not output:
-        return {"message": f"User {id} not found"}, 404
+    # If user has only USER role, they can view the information for them
+    if RoleEnum.USER in user_roles:
+        if int(user_id) != user.id:
+            return {
+                "message": f"You don't have the permission to see information of user {user_id}"
+            }, 401
+        return {"user": output}, 200
 
-    return {"user": output}, 200
+    return {
+        "message": f"User {user_id} does not have the required role to execute this action"
+    }, 401
 
 
 def post_users(**kwargs):
     """
-    Create a user
-    :param kwargs: A dict which contains all information to create a user
-    :keyword body.username: The chosen username
-    :keyword body.email: The email of the user
-    :keyword body.password: The password chosen by the user
-    :keyword body.questions: The list of security questions answered
-    by the user : questionId and response
-    :keyword body.device: The device used by the user to create his account
-    :keyword body.phone: The phone number of the user
+    POST /users
+
+    Params :
+        - username in kwargs, the chosen username
+        - email in kwargs, the email of the user
+        - password in kwargs, the password chosen by the user
+        - phone in kwargs, the phone number of the user
+        - questions in kwargs, the list of questions answered by the user : questionId and response
+        - device in kwargs, the device used by the user to create his account
+
     :return: The created user
     """
 
     payload = kwargs.get("body")
-    if not payload:
-        return {"message": "Input error, body is not defined"}, 400
-
     username = payload.get("username")
     email = payload.get("email")
     password = payload.get("password")
     questions = payload.get("questions")
-    device = payload.get("device")
-    phone = payload.get("phone")
-    if not username:
-        return {"message": "Input error, username is not defined"}, 400
-    if not email:
-        return {"message": "Input error, email is not defined"}, 400
-    if not password:
-        return {"message": "Input error, password is not defined"}, 400
-    if not questions:
-        return {"message": "Input error, questions is not defined"}, 400
-    if not device:
-        return {"message": "Input error, device is not defined"}, 400
-    if not phone:
-        return {"message": "Input error, phone is not defined"}, 400
 
     # Check if questions exists
     for question in questions:
         question_id = question.get("questionId")
         response = question.get("response")
-        if not question_id:
-            return {"message": "Input error, questionId is not defined"}, 400
-        if not response:
-            return {"message": "Input error, response is not defined"}, 400
+        if not question_id or not response:
+            return {
+                "message":
+                    "Input error, for each question you have to provide "
+                    "the questionId and the answer"
+            }, 400
 
-        if not get_by_id(question_id):
-            return {"message": f"Question {question_id} not found"}, 400
+        if not tempo_core.question.get_by_id(question_id):
+            return {"message": f"Question {question_id} not found"}, 404
 
     # Check username
-    if get_by_username(username):
+    if tempo_core.user.get_instance_by_key(username=username):
         return {"message": "Username is already used"}, 400
 
+    check = check_password(password=password, username=username, email=email)
+    if check is not None:
+        return check
+
+    salt = generate_salt()
+
+    # Hash the password
+    pepper = os.environ.get("PEPPER")
+    password = pepper + password + salt
+    password = hashlib.sha256(password.encode("utf-8")).hexdigest().upper()
+
+    # Create the user
+    user = tempo_core.user.create(
+        username=username,
+        email=email,
+        password=password,
+        salt=salt,
+        devices=json.dumps([payload.get("device")]),
+        status=StatusEnum.CHECKING_EMAIL,
+        phone=payload.get("phone")
+    )
+
+    # Assign to the created user default role : USER
+    default_role = tempo_core.role.get_instance_by_key(name=RoleEnum.USER)
+    tempo_core.user_role.create(user_id=user.id, role_id=default_role.id)
+
+    # Associate questions to the user
+    for question in questions:
+        question_id = question.get("questionId")
+        response = question.get("response")
+
+        response = pepper + response + salt
+        response = hashlib.sha256(response.encode("utf-8")).hexdigest().upper()
+        tempo_core.user_questions.create(
+            user_id=user.id,
+            question_id=question_id,
+            response=response
+        )
+
+    # Send the verification email
+    try:
+        handle_email(user_email=email, username=username, user_id=user.id)
+    except (smtplib.SMTPException, KeyError) as e:
+        return {"message": f"Erreur lors de l'envoi de l'email : {e.__class__.__name__}"}, 500
+
+    return {"user": user.to_dict()}, 202
+
+
+def check_password(password: str, username: str, email: str):
     """
     Password rules: (based on NIST recommendations (August 2024))
+
     - length: minimum 10 characters
     - no more than 3 identical characters in a row
     - not the name or derivatives of the name of the user
@@ -159,10 +182,18 @@ def post_users(**kwargs):
     - numbers, upper and lower case letters
     - Password not present in the list of compromised passwords (HIBP API)
     """
+    print("IN CHECK PASSWORD")
+    error_message = None
+    status_code = 200
+
+    # Checking password length
+    if len(password) < 10:
+        error_message = "Password length should be minimum 10."
+        status_code = 400
+        print("changed")
 
     # Checking for series or repetitions
-    pattern = r"(?=([a-z]{3}|[A-Z]{3}|\d{3}))"
-    results = re.findall(pattern, password)
+    results = re.findall(r"(?=([a-z]{3}|[A-Z]{3}|\d{3}))", password)
     results_series = [
         match for match in results
         if (
@@ -174,31 +205,25 @@ def post_users(**kwargs):
         match for match in results if match[0] == match[1] == match[2]
     ]
     if len(results_repetition) > 0:
-        return {
-            "message": "You cannot have 3 identical characters in a row."
-        }, 400
+        error_message = "You cannot have 3 identical characters in a row."
+        status_code = 400
     if len(results_series) > 0:
-        return {
-            "message": "Sequence longer than 3 characters detected."
-        }, 400
+        error_message = "Sequence longer than 3 characters detected."
+        status_code = 400
 
-    has_number = any(letter.isdigit() for letter in password)
-    has_upper = any(letter.isupper() for letter in password)
-    has_lower = any(letter.islower() for letter in password)
-    if not (has_number and has_upper and has_lower):
-        return {
-            "message": (
-                "Password must have a number, an uppercase letter, "
-                "and a lowercase letter."
-            )
-        }, 400
-    # Checking is password contains user information
-    checking_list = get_user_info(username, email)
-    for item in checking_list:
+    if not (
+        any(letter.isdigit() for letter in password)
+        and any(letter.isupper() for letter in password)
+        and any(letter.islower() for letter in password)
+    ):
+        error_message = "Password must have a number, an uppercase letter, and a lowercase letter."
+        status_code = 400
+
+    # Checking if password contains user information
+    for item in get_user_info(username, email):
         if item in password:
-            return {
-                "message": "Password seems to contain personal information."
-            }, 400
+            error_message = "Password seems to contain personal information."
+            status_code = 400
 
     # Call to HIBP API
     hashed_password = (
@@ -206,66 +231,28 @@ def post_users(**kwargs):
         .hexdigest()
         .upper()
     )
-    hash_beginning = hashed_password[0:5]
     hash_end = hashed_password[5:]
-    hipb_url = os.environ.get("HIPB_API_URL") + hash_beginning
-    response = call_to_api(hipb_url)
+    hibp_client = HibpClient()
+    response = hibp_client.check_breach(hashed_password[0:5])
     if not response:
-        return {
-            "message": "Password checking feature is unavailable."
-        }, 500
-    response = response.text.splitlines()
+        error_message = "Password checking feature is unavailable."
+        status_code = 500
     for line in response:
         if line.split(":")[0] == hash_end:
-            return {"message": "Password is too weak."}, 400
+            error_message = "Password is too weak."
+            status_code = 400
+    print("message : ", error_message)
+    print("code : ", status_code)
 
-    # Creating the salt (specific for the user)
-    salt = ""
-    for _ in range(5):
-        random_integer = random.randint(97, 97 + 26 - 1)
-        is_capital = random.randint(0, 1)
-        random_integer = random_integer - 32 \
-            if is_capital == 1 else random_integer
-        salt += chr(random_integer)
+    return ({"message": error_message}, status_code) if error_message else None
 
-    # Hash the password
-    pepper = os.environ.get("PEPPER")
-    password = pepper + password + salt
-    password = hashlib.sha256(password.encode("utf-8")).hexdigest().upper()
 
-    # Create the user
-    output = create(
-        username=username,
-        email=email,
-        password=password,
-        salt=salt,
-        device=device,
-        phone=phone
+def generate_salt(length=5):
+    """Generate a random salt."""
+    return "".join(
+        chr(random.randint(65, 90) if random.randint(0, 1) else random.randint(97, 122))
+        for _ in range(length)
     )
-
-    # Associate questions to the user
-    user_id = output.get("id")
-    for question in questions:
-        question_id = question.get("questionId")
-        response = question.get("response")
-
-        response = pepper + response + salt
-        response = hashlib.sha256(response.encode("utf-8")).hexdigest().upper()
-        add_question_to_user(
-            user_id=user_id,
-            question_id=question_id,
-            response=response
-        )
-
-    # Send the verification email
-    try:
-        handle_email(user_email=email, username=username, user_id=user_id)
-    except Exception:
-        return {
-            "message": "Verification email cannot be send"
-        }, 400
-
-    return {"user": output}, 202
 
 
 def get_user_info(username: str, email: str):
@@ -276,8 +263,8 @@ def get_user_info(username: str, email: str):
     :return: A set containing substring found with user information
     """
 
-    email_first_part = email.split('@')[0].split('.')
-    email_second_part = email.split('@')[1].split('.')[0]
+    email_first_part = email.split("@")[0].split(".")
+    email_second_part = email.split("@")[1].split(".")[0]
 
     username_substring = generate_substrings(username)
     email_info_substring = []
@@ -285,9 +272,9 @@ def get_user_info(username: str, email: str):
         email_info_substring += generate_substrings(info)
 
     checking_list = (
-        username_substring +
-        email_info_substring +
-        [email_second_part]
+        username_substring
+        + email_info_substring
+        + [email_second_part]
     )
     return set(checking_list)
 
@@ -299,4 +286,4 @@ def generate_substrings(word):
     :return: substring with more than 4 letters of the word
     """
 
-    return [word[0:j+1].lower() for j in range(4 - 1, len(word))]
+    return [word[0:j + 1].lower() for j in range(4 - 1, len(word))]

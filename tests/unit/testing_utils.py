@@ -110,8 +110,8 @@ def has_series(password):
     """ Check for any series """
     for i in range(len(password) - 2):
         if (
-            (ord(password[i + 1]) - ord(password[i]) == 1) and
-            (ord(password[i + 2]) - ord(password[i + 1]) == 1)
+            (ord(password[i + 1]) - ord(password[i]) == 1)
+            and (ord(password[i + 2]) - ord(password[i + 1]) == 1)
         ):
             return True
     return False

@@ -1,29 +1,26 @@
-import os
-
 from sqlalchemy.exc import SQLAlchemyError
 
-from services.health import select_1
-from utils.utils import call_to_api
+from adapters.hibp_client import HibpClient
+from core.tempo_core import tempo_core
 
 
 def health_check():
     """
-    Get the current status of the API
+    GET /health
     :return: A message if the API and subj-ascents are working
     """
 
     # PSQL database
     try:
-        select_1()
+        tempo_core.health.select_1()
     except SQLAlchemyError:
         return {"error": "API is DEGRADED, database not accessible"}, 500
 
     # HIBP
-    hipb_url = os.environ.get("HIPB_API_URL") + "00000"
-    hipb_response = call_to_api(hipb_url)
-    if not (hipb_response and hipb_response.status_code == 200):
-        return {
-            "error": "API is DEGRADED, subj-ascent HIBP not accessible"
-        }, 500
+    hibp_client = HibpClient()
+    try:
+        hibp_client.check_breach("00000")
+    except RuntimeError:
+        return {"error": "API is DEGRADED, subj-ascent HIBP not accessible"}, 500
 
     return {"message": "API is UP"}, 200
