@@ -1,38 +1,40 @@
+import os
+import smtplib
 import uuid
 from unittest.mock import patch
 
 import pytest
 from flask import session
+from itsdangerous import BadSignature, SignatureExpired
+from twilio.base.exceptions import TwilioRestException
 
-from models.user import StatusEnum
-from routes import (check_mail, check_phone, check_phone_auth, confirm_token,
-                    handle_phone_number)
+from core.models.user import StatusEnum
+from routes import (check_mail, check_phone, confirm_token, resend_email)
 
 
 @pytest.mark.usefixtures("session")
 class TestCheckMail:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_get_details = patch("routes.get_details")
-        self.mock_get_details = self.patch_get_details.start()
-        request.addfinalizer(self.patch_get_details.stop)
+    def setup_method(self, request, user):
+        patch_core = patch("routes.tempo_core")
+        self.mock_core = patch_core.start()
+        request.addfinalizer(patch_core.stop)
 
-        self.patch_confirm_token = patch("routes.confirm_token")
-        self.mock_confirm_token = self.patch_confirm_token.start()
-        request.addfinalizer(self.patch_confirm_token.stop)
+        patch_confirm_token = patch("routes.confirm_token")
+        self.mock_confirm_token = patch_confirm_token.start()
+        request.addfinalizer(patch_confirm_token.stop)
 
-        self.patch_update = patch("routes.update")
-        self.mock_update = self.patch_update.start()
-        request.addfinalizer(self.patch_update.stop)
+        patch_twilio_client = patch("routes.twilio_client")
+        self.mock_twilio_client = patch_twilio_client.start()
+        request.addfinalizer(patch_twilio_client.stop)
 
-        self.patch_handle_phone_number = patch("routes.handle_phone_number")
-        self.mock_handle_phone_number = self.patch_handle_phone_number.start()
-        request.addfinalizer(self.patch_handle_phone_number.stop)
+        patch_render_template = patch("routes.render_template")
+        self.mock_render_template = patch_render_template.start()
+        request.addfinalizer(patch_render_template.stop)
 
-        self.patch_render_template = patch("routes.render_template")
-        self.mock_render_template = self.patch_render_template.start()
-        request.addfinalizer(self.patch_render_template.stop)
+        user.status = StatusEnum.CHECKING_EMAIL
+        self.user = user
 
     def test_check_mail_checking_email(self, test_app):
         # Given
@@ -43,30 +45,23 @@ class TestCheckMail:
                 f"/checkmail/{token}",
                 query_string={"user_id": str(user_id)}
         ):
-            session['email_token'] = str(uuid.uuid4())
-            self.mock_get_details.return_value = {
-                'status': StatusEnum.CHECKING_EMAIL.value,
-                'username': 'testuser',
-                'phone': '123456789',
-            }
+            session["email_token"] = str(uuid.uuid4())
+            self.mock_core.user.get_by_id.return_value = self.user
             self.mock_confirm_token.return_value = "testuser@example.com"
 
             # When
             check_mail(token)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_confirm_token.assert_called_once_with(token)
-            self.mock_update.assert_called_once_with(
+            self.mock_core.user.update.assert_called_once_with(
                 user_id,
-                StatusEnum.CHECKING_PHONE.value
+                status=StatusEnum.CHECKING_PHONE.value
             )
-            self.mock_handle_phone_number.assert_called_once_with(
-                phone='123456789'
-            )
+            self.mock_twilio_client.send_verification_code.assert_called_once_with(self.user.phone)
             self.mock_render_template.assert_called_once_with(
                 "check_phone_template.html",
-                username={"testuser"},
+                username={self.user.username},
                 user_id=str(user_id)
             )
 
@@ -79,35 +74,25 @@ class TestCheckMail:
                 f"/checkmail/{token}",
                 query_string={"user_id": str(user_id)}
         ):
-            session['email_token'] = str(uuid.uuid4())
-            self.mock_get_details.return_value = {
-                'status': StatusEnum.CHECKING_EMAIL.value,
-                'username': 'testuser',
-                'phone': '123456789',
-            }
+            session["email_token"] = str(uuid.uuid4())
+            self.mock_core.user.get_by_id.return_value = self.user
             self.mock_confirm_token.return_value = None
 
             # When
             check_mail(token)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_confirm_token.assert_called_once_with(token)
             self.mock_render_template.assert_called_once_with(
                 "invalid_token_template.html",
-                username={"testuser"},
-                action="/security/resend-email/testuser"
+                username={self.user.username},
+                action=f"/security/resend-email/{self.user.username}"
             )
 
     def test_check_mail_invalid_status(self, test_app):
         # Given
         token = "valid_token"
         user_id = 1
-        self.mock_get_details.return_value = {
-            'status': StatusEnum.READY.value,
-            'username': 'testuser',
-            'phone': '123456789',
-        }
 
         with test_app.test_request_context(
                 f"/checkmail/{token}",
@@ -117,7 +102,6 @@ class TestCheckMail:
             check_mail(token)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_render_template.assert_called_once_with(
                 "error_template.html"
             )
@@ -125,69 +109,57 @@ class TestCheckMail:
     def test_check_mail_email_already_checked(self, test_app):
         # Given
         token = "valid_token"
-        user_id = 1
+        self.user.status = StatusEnum.CHECKING_PHONE
+        self.mock_core.user.get_by_id.return_value = self.user
 
         with test_app.test_request_context(
                 f"/checkmail/{token}",
-                query_string={"user_id": str(user_id)}
+                query_string={"user_id": str(self.user.id)}
         ):
-            session['email_token'] = str(uuid.uuid4())
-            self.mock_get_details.return_value = {
-                'status': StatusEnum.CHECKING_PHONE.value,
-                'username': 'testuser',
-                'phone': '123456789',
-                "email": "example@fake.com"
-            }
-            self.mock_confirm_token.return_value = "testuser@example.com"
+            session["email_token"] = str(uuid.uuid4())
+            self.mock_confirm_token.return_value = self.user.email
 
             # When
             check_mail(token)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_confirm_token.assert_not_called()
-            self.mock_update.assert_called_once_with(
-                user_id,
-                StatusEnum.CHECKING_PHONE.value
+            self.mock_core.user.update.assert_called_once_with(
+                self.user.id,
+                status=StatusEnum.CHECKING_PHONE.value
             )
-            self.mock_handle_phone_number.assert_called_once_with(
-                phone='123456789'
-            )
+            self.mock_twilio_client.send_verification_code.assert_called_once_with(self.user.phone)
             self.mock_render_template.assert_called_once_with(
                 "check_phone_template.html",
-                username={"testuser"},
-                user_id=str(user_id)
+                username={self.user.username},
+                user_id=str(self.user.id)
             )
 
     def test_check_mail_raises_exception(self, test_app):
         # Given
         token = "valid_token"
-        user_id = 1
+        self.mock_core.user.get_by_id.return_value = self.user
 
         with test_app.test_request_context(
                 f"/checkmail/{token}",
-                query_string={"user_id": str(user_id)}
+                query_string={"user_id": str(self.user.id)}
         ):
-            session['email_token'] = str(uuid.uuid4())
-            self.mock_get_details.return_value = {
-                'status': StatusEnum.CHECKING_EMAIL.value,
-                'username': 'testuser',
-                'phone': '123456789',
-            }
+            session["email_token"] = str(uuid.uuid4())
             self.mock_confirm_token.return_value = "testuser@example.com"
-            self.mock_update.side_effect = Exception(
-                "Erreur lors de la mise à jour"
+            self.mock_core.user.update.side_effect = TwilioRestException(
+                status=400,
+                uri="https://api.twilio.com/v1/Users",
+                msg="Erreur lors de la mise à jour"
             )
 
             # When
             result = check_mail(token)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_confirm_token.assert_called_once_with(token)
-            self.mock_update.assert_called_once_with(
-                user_id,
-                StatusEnum.CHECKING_PHONE.value
+            self.mock_core.user.update.assert_called_once_with(
+                self.user.id,
+                status=StatusEnum.CHECKING_PHONE.value
             )
             self.mock_render_template.assert_called_once_with(
                 "error_template.html"
@@ -199,50 +171,44 @@ class TestCheckMail:
 class TestCheckPhone:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_get_details = patch("routes.get_details")
-        self.mock_get_details = self.patch_get_details.start()
-        request.addfinalizer(self.patch_get_details.stop)
+    def setup_method(self, request, user):
+        self.patch_core = patch("routes.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
 
-        self.patch_check_phone_auth = patch("routes.check_phone_auth")
-        self.mock_check_phone_auth = self.patch_check_phone_auth.start()
-        request.addfinalizer(self.patch_check_phone_auth.stop)
-
-        self.patch_update = patch("routes.update")
-        self.mock_update = self.patch_update.start()
-        request.addfinalizer(self.patch_update.stop)
+        self.patch_twilio_client = patch("routes.twilio_client")
+        self.mock_twilio_client = self.patch_twilio_client.start()
+        request.addfinalizer(self.patch_twilio_client.stop)
 
         self.patch_render_template = patch("routes.render_template")
         self.mock_render_template = self.patch_render_template.start()
         request.addfinalizer(self.patch_render_template.stop)
 
+        user.status = StatusEnum.CHECKING_EMAIL
+        self.user = user
+
     def test_check_phone_approved_status(self, test_app):
         # Given
         inputcode = "valid_code"
-        user_id = 1
+        self.mock_core.user.get_by_id.return_value = self.user
 
         with test_app.test_request_context(
                 f"/checkphone/{inputcode}",
-                query_string={"user_id": str(user_id)}
+                query_string={"user_id": str(self.user.id)}
         ):
-            self.mock_get_details.return_value = {
-                'phone': '123456789',
-                'username': 'testuser',
-            }
-            self.mock_check_phone_auth.return_value = "approved"
+            self.mock_twilio_client.check_verification_code.return_value = "approved"
 
             # When
             check_phone(inputcode)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
-            self.mock_check_phone_auth.assert_called_once_with(
-                code=inputcode,
-                phone='123456789'
+            self.mock_twilio_client.check_verification_code.assert_called_once_with(
+                self.user.phone,
+                inputcode
             )
-            self.mock_update.assert_called_once_with(
-                user_id,
-                StatusEnum.READY.value
+            self.mock_core.user.update.assert_called_once_with(
+                str(self.user.id),
+                status=StatusEnum.READY.value
             )
             self.mock_render_template.assert_called_once_with(
                 "phone_validated_template.html"
@@ -251,55 +217,46 @@ class TestCheckPhone:
     def test_check_phone_invalid_code(self, test_app):
         # Given
         inputcode = "invalid_code"
-        user_id = 1
+        self.mock_core.user.get_by_id.return_value = self.user
 
         with test_app.test_request_context(
                 f"/checkphone/{inputcode}",
-                query_string={"user_id": str(user_id)}
+                query_string={"user_id": str(self.user.id)}
         ):
-            self.mock_get_details.return_value = {
-                'phone': '123456789',
-                'username': 'testuser',
-            }
-            self.mock_check_phone_auth.return_value = "denied"
+            self.mock_twilio_client.check_verification_code.return_value = "denied"
 
             # When
             check_phone(inputcode)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
-            self.mock_check_phone_auth.assert_called_once_with(
-                code=inputcode,
-                phone='123456789'
+            self.mock_twilio_client.check_verification_code.assert_called_once_with(
+                self.user.phone,
+                inputcode
             )
             self.mock_render_template.assert_called_once_with(
                 "invalid_input_template.html",
-                phone='123456789',
-                user_id=user_id
+                phone=self.user.phone,
+                user_id=str(self.user.id)
             )
 
     def test_check_phone_raises_exception(self, test_app):
         # Given
         inputcode = "valid_code"
-        user_id = 1
 
         with test_app.test_request_context(
                 f"/checkphone/{inputcode}",
-                query_string={"user_id": str(user_id)}
+                query_string={"user_id": str(self.user.id)}
         ):
-            self.mock_get_details.return_value = {
-                'phone': '123456789',
-                'username': 'testuser',
-            }
-            self.mock_check_phone_auth.side_effect = Exception(
-                "Erreur lors de la validation du code"
+            self.mock_twilio_client.check_verification_code.side_effect = TwilioRestException(
+                status=400,
+                uri="https://api.twilio.com/v1/Users",
+                msg="Erreur lors de la mise à jour"
             )
 
             # When
             result = check_phone(inputcode)
 
             # Then
-            self.mock_get_details.assert_called_once_with(user_id)
             self.mock_render_template.assert_called_once_with(
                 "error_template.html"
             )
@@ -311,16 +268,8 @@ class TestConfirmToken:
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
         self.salt = "salt"
-
-        self.patch_secret_key = patch(
-            "os.environ.get",
-            side_effect=lambda key: {
-                'SECRET_KEY': 'test_secret_key',
-                'SECURITY_PASSWORD_SALT': self.salt
-            }[key]
-        )
-        self.mock_secret_key = self.patch_secret_key.start()
-        request.addfinalizer(self.patch_secret_key.stop)
+        os.environ["SECRET_KEY"] = "test_secret_key"
+        os.environ["SECURITY_PASSWORD_SALT"] = self.salt
 
         self.patch_serializer = patch("routes.URLSafeTimedSerializer")
         self.mock_serializer = self.patch_serializer.start()
@@ -355,7 +304,7 @@ class TestConfirmToken:
     def test_confirm_token_expired(self):
         # Given
         token = "expired_token"
-        self.mock_serializer_instance.loads.side_effect = Exception(
+        self.mock_serializer_instance.loads.side_effect = SignatureExpired(
             "Token expired"
         )
 
@@ -374,7 +323,7 @@ class TestConfirmToken:
     def test_confirm_token_invalid(self):
         # Given
         token = "invalid_token"
-        self.mock_serializer_instance.loads.side_effect = Exception(
+        self.mock_serializer_instance.loads.side_effect = BadSignature(
             "Invalid token"
         )
 
@@ -391,178 +340,106 @@ class TestConfirmToken:
         assert email is False
 
 
-class TestHandlePhoneNumber:
+@pytest.mark.usefixtures("session")
+class TestResendEmail:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_env = patch("os.environ.get", side_effect=lambda key: {
-            "TWILIO_ACCOUNT_SID": "test_account_sid",
-            "TWILIO_AUTH_TOKEN": "test_auth_token",
-            "TWILIO_SERVICE": "test_service"
-        }[key])
-        self.mock_env = self.patch_env.start()
-        request.addfinalizer(self.patch_env.stop)
+    def setup_method(self, request, user):
+        self.patch_core = patch("routes.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
 
-        self.patch_client = patch("routes.Client")
-        self.mock_client = self.patch_client.start()
-        request.addfinalizer(self.patch_client.stop)
+        self.patch_handle_email = patch("routes.handle_email")
+        self.mock_handle_email = self.patch_handle_email.start()
+        request.addfinalizer(self.patch_handle_email.stop)
 
-        self.mock_twilio_client = self.mock_client.return_value
-        self.mock_verify_service = (
-            self.mock_twilio_client.verify.v2.services.return_value
-        )
+        self.patch_render_template = patch("routes.render_template")
+        self.mock_render_template = self.patch_render_template.start()
+        request.addfinalizer(self.patch_render_template.stop)
 
-    def test_handle_phone_number_valid(self):
+        user.status = StatusEnum.CHECKING_EMAIL
+        self.user = user
+
+    def test_resend_email_success(self, test_app):
         # Given
-        phone = "+1234567890"
+        kwargs = {"username": "valid_user"}
+        self.mock_core.user.get_instance_by_key.return_value = self.user
 
-        # When
-        handle_phone_number(phone)
+        with test_app.test_request_context():
+            with patch(
+                    "routes.session",
+                    {"email_token": "token"}
+            ) as mock_session:
+                # When
+                _, status_code = resend_email(**kwargs)
 
-        # Then
-        self.mock_client.assert_called_once_with(
-            "test_account_sid",
-            "test_auth_token"
-        )
-        self.mock_twilio_client.verify.v2.services.assert_called_once_with(
-            "test_service"
-        )
-        self.mock_verify_service.verifications.create.assert_called_once_with(
-            to=phone,
-            channel="sms"
-        )
+                # Then
+                assert status_code == 202
+                self.mock_core.user.get_instance_by_key.assert_called_with(username="valid_user")
+                self.mock_render_template.assert_called_with(
+                    "email_resend_template.html"
+                )
+                assert "email_token" not in mock_session
 
-    def test_handle_phone_number_invalid_phone(self):
+    def test_resend_email_user_not_found(self, test_app):
         # Given
-        phone = "invalid_phone"
-        self.mock_verify_service.verifications.create.side_effect = Exception(
-            "Invalid phone number"
-        )
+        username = "invalid_user"
+        kwargs = {"username": username}
+        self.mock_core.user.get_instance_by_key.return_value = None
 
-        # When
-        with pytest.raises(Exception, match="Invalid phone number"):
-            handle_phone_number(phone)
+        with test_app.test_request_context():
+            with patch(
+                    "routes.session",
+                    {"email_token": "token"}
+            ):
+                # When
+                _, status_code = resend_email(**kwargs)
 
-        # Then
-        self.mock_client.assert_called_once_with(
-            "test_account_sid",
-            "test_auth_token"
-        )
-        self.mock_twilio_client.verify.v2.services.assert_called_once_with(
-            "test_service"
-        )
-        self.mock_verify_service.verifications.create.assert_called_once_with(
-            to=phone,
-            channel="sms"
-        )
+                # Then
+                assert status_code == 404
+                self.mock_core.user.get_instance_by_key.assert_called_with(username=username)
+                self.mock_render_template.assert_called_with(
+                    "error_template.html"
+                )
 
-
-class TestCheckPhoneAuth:
-
-    @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_env = patch(
-            "os.environ.get",
-            side_effect=lambda key: {
-                "TWILIO_ACCOUNT_SID": "test_account_sid",
-                "TWILIO_AUTH_TOKEN": "test_auth_token",
-                "TWILIO_SERVICE": "test_service"
-            }[key]
-        )
-        self.mock_env = self.patch_env.start()
-        request.addfinalizer(self.patch_env.stop)
-
-        self.patch_client = patch("routes.Client")
-        self.mock_client = self.patch_client.start()
-        request.addfinalizer(self.patch_client.stop)
-
-        self.mock_twilio_client = self.mock_client.return_value
-        self.mock_verify_service = (
-            self.mock_twilio_client.verify.v2.services.return_value
-        )
-
-    def test_check_phone_auth_valid_code(self):
+    def test_resend_email_no_token(self, test_app):
         # Given
-        phone = "+1234567890"
-        code = "123456"
-        mock_verification_check = (
-            self.mock_verify_service.verification_checks.create.return_value
-        )
-        mock_verification_check.status = "approved"
+        kwargs = {"username": "valid_user"}
+        self.mock_core.user.get_instance_by_key.return_value = self.user
 
-        # When
-        result = check_phone_auth(code, phone)
+        with test_app.test_request_context():
+            with patch(
+                    "routes.session",
+                    {"email_token": None}
+            ):
+                # When
+                _, status_code = resend_email(**kwargs)
 
-        # Then
-        assert result == "approved"
-        self.mock_client.assert_called_once_with(
-            "test_account_sid",
-            "test_auth_token"
-        )
-        self.mock_twilio_client.verify.v2.services.assert_called_once_with(
-            "test_service"
-        )
-        (
-            self.mock_verify_service.verification_checks.create
-            .assert_called_once_with(
-                to=phone,
-                code=code
-            )
-        )
+                # Then
+                assert status_code == 202
+                self.mock_core.user.get_instance_by_key.assert_called_with(username="valid_user")
+                self.mock_render_template.assert_called_with(
+                    "email_resend_template.html"
+                )
 
-    def test_check_phone_auth_invalid_code(self):
+    def test_resend_email_error(self, test_app):
         # Given
-        phone = "+1234567890"
-        code = "000000"
-        mock_verification_check = (
-            self.mock_verify_service.verification_checks.create.return_value
-        )
-        mock_verification_check.status = "pending"
+        kwargs = {"username": "valid_user"}
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_handle_email.side_effect = smtplib.SMTPException
 
-        # When
-        result = check_phone_auth(code, phone)
+        with test_app.test_request_context():
+            with patch(
+                    "routes.session",
+                    {"email_token": "token"}
+            ) as mock_session:
+                # When
+                _, status_code = resend_email(**kwargs)
 
-        # Then
-        assert result == "pending"
-        self.mock_client.assert_called_once_with(
-            "test_account_sid",
-            "test_auth_token"
-        )
-        self.mock_twilio_client.verify.v2.services.assert_called_once_with(
-            "test_service"
-        )
-        (
-            self.mock_verify_service.verification_checks.create.
-            assert_called_once_with(
-                to=phone,
-                code=code
-            )
-        )
-
-    def test_check_phone_auth_exception(self):
-        # Given
-        phone = "+1234567890"
-        code = "123456"
-        self.mock_verify_service.verification_checks.create.side_effect = (
-            Exception("Twilio error")
-        )
-
-        # When
-        with pytest.raises(Exception, match="Twilio error"):
-            check_phone_auth(code, phone)
-
-        # Then
-        self.mock_client.assert_called_once_with(
-            "test_account_sid",
-            "test_auth_token"
-        )
-        self.mock_twilio_client.verify.v2.services.assert_called_once_with(
-            "test_service"
-        )
-        (
-            self.mock_verify_service.verification_checks.create
-            .assert_called_once_with(
-                to=phone,
-                code=code
-            )
-        )
+                # Then
+                assert status_code == 500
+                self.mock_core.user.get_instance_by_key.assert_called_with(username="valid_user")
+                self.mock_render_template.assert_called_with(
+                    "error_template.html"
+                )
+                assert "email_token" not in mock_session

@@ -3,6 +3,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app import app
 from extensions import db
+from core.models.user import User, StatusEnum
 
 
 @pytest.fixture(scope='module')
@@ -42,4 +43,18 @@ def session(test_app):
 
 @pytest.fixture
 def client(test_app):
-    return app.test_client()
+    return test_app.test_client()
+
+
+@pytest.fixture
+def user():
+    return User(
+        id=1,
+        username="username",
+        email="username@email.com",
+        password="password",
+        salt="abcde",
+        phone="0102030405",
+        devices="['iphone']",
+        status=StatusEnum.READY
+    )

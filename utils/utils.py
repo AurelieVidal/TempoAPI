@@ -1,10 +1,8 @@
 import os
 
-import requests
 from flask import render_template
 from flask_mail import Message
 from itsdangerous import URLSafeTimedSerializer
-from retry import retry
 
 from app import mail
 
@@ -52,19 +50,3 @@ def generate_confirmation_token(email: str):
     serializer = URLSafeTimedSerializer(secret_key)
 
     return serializer.dumps(email, salt=salt)
-
-
-@retry(requests.RequestException, tries=5, delay=2)
-def call_to_api(url):
-    """
-    Call to an API
-    :param url: API URL
-    :return: The response of the call
-    """
-
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.RequestException:
-        return
-    return response

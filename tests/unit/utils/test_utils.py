@@ -2,10 +2,9 @@ import os
 from unittest.mock import patch
 
 import pytest
-import requests
 from flask_mail import Message
 
-from utils.utils import call_to_api, generate_confirmation_token, handle_email
+from utils.utils import generate_confirmation_token, handle_email
 
 
 @pytest.mark.usefixtures("session")
@@ -85,40 +84,3 @@ class TestGenerateConfirmationToken:
             salt=os.environ["SECURITY_PASSWORD_SALT"]
         )
         assert token == expected_token
-
-
-@pytest.mark.usefixtures("session")
-class TestCallToApi:
-
-    @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_get = patch("utils.utils.requests.get")
-        self.mock_get = self.patch_get.start()
-        request.addfinalizer(self.patch_get.stop)
-
-    def test_call_to_api_success(self):
-        # Given
-        url = "https://api.example.com"
-        mock_response = self.mock_get.return_value
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"data": "some_data"}
-
-        # When
-        response = call_to_api(url)
-
-        # Then
-        assert response == mock_response
-        self.mock_get.assert_called_once_with(url)
-        mock_response.raise_for_status.assert_called_once()
-
-    def test_call_to_api_failure(self):
-        # Given
-        url = "https://api.example.com"
-        self.mock_get.side_effect = requests.RequestException("Error occurred")
-
-        # When
-        response = call_to_api(url)
-
-        # Then
-        assert response is None
-        self.mock_get.assert_called_once_with(url)

@@ -1,6 +1,7 @@
 PYTHON = python
 TEST_DIR = tests
 FLAKE8 = flake8
+PYLINT = pylint
 
 all: test
 
@@ -20,6 +21,9 @@ isort-check:
 isort:
 	isort . --skip venv
 
+pylint:
+	$(PYLINT) --rcfile=.pylintrc --fail-under=9.75 $(shell find . -name "*.py" ! -path "./venv/*")
+
 run_dev:
 	uvicorn app:app --reload
 
@@ -38,4 +42,5 @@ help:
 	@echo "  make flake        - Run Flake8 for code quality"
 	@echo "  make isort        - Auto-fix import order with isort"
 	@echo "  make isort-check  - Check import order with isort"
+	@echo "  make pylint       - Run Pylint for static analysis"
 	@echo "  make help         - Show this help message"

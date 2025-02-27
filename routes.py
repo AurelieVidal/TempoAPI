@@ -1,60 +1,57 @@
 import os
+import smtplib
 import uuid
 
 from flask import Blueprint, render_template, request, session
-from itsdangerous import URLSafeTimedSerializer
-from twilio.rest import Client
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from twilio.base.exceptions import TwilioRestException
 
-from models.user import StatusEnum
-from services.user import get_details, update
+from adapters.twilio_client import TwilioClient
+from core.models.user import StatusEnum
+from core.tempo_core import tempo_core
+from utils.utils import handle_email
 
 routes = Blueprint('routes', __name__)
+twilio_client = TwilioClient()
 
 
 @routes.route('/checkmail/<token>')
 def check_mail(token):
     """
     Route called when user click on the email
-    :param token: Token used to determine when the email was send
+    :param token: Token used to determine when the email was sent
     :return: The phone checking template or error template
     """
-
     user_id = request.args.get("user_id")
-    details_user = get_details(int(user_id))
-
-    print("USERID", user_id)
-    print("DETAILS", details_user)
+    user = tempo_core.user.get_by_id(user_id)
 
     # If we are checking the mail of the user
-    if details_user.get('status') == StatusEnum.CHECKING_EMAIL.value:
+    if user.status == StatusEnum.CHECKING_EMAIL:
         email = confirm_token(token)
-        username = details_user.get('username')
+        username = user.username
         token = str(uuid.uuid4())
         session['email_token'] = token
 
     # If the email has been checked and user didn't receive any text with
     # a code to check the phone
-    elif details_user.get('status') == StatusEnum.CHECKING_PHONE.value:
-        print("in checking if")
-        email = details_user.get('email')
-        username = details_user.get("username")
+    elif user.status == StatusEnum.CHECKING_PHONE:
+        email = user.email
+        username = user.username
 
     # If the user is already validated or doesn't have an appropriate status
     else:
         return render_template("error_template.html")
-    print("EMAIL", email)
     # If email has been validated
     if email:
         try:
-            print("in try")
-            update(int(user_id), StatusEnum.CHECKING_PHONE.value)
-            handle_phone_number(phone=details_user.get("phone"))
+            tempo_core.user.update(int(user_id), status=StatusEnum.CHECKING_PHONE.value)
+            twilio_client.send_verification_code(user.phone)
             return render_template(
                 "check_phone_template.html",
                 username={username},
                 user_id=user_id
             )
-        except Exception:
+        except TwilioRestException:
             return render_template("error_template.html")
 
     # In case the token is not valid anymore
@@ -76,24 +73,22 @@ def check_phone(inputcode):
     code or the error template
     """
 
-    user_id = int(request.args.get("user_id"))
-    details_user = get_details(user_id)
+    user_id = request.args.get("user_id")
+    user = tempo_core.user.get_by_id(user_id)
+    print(user)
 
     try:
-        status = check_phone_auth(
-            code=inputcode,
-            phone=details_user.get("phone")
-        )
-    except Exception:
+        status = twilio_client.check_verification_code(user.phone, inputcode)
+    except TwilioRestException:
         return render_template("error_template.html")
 
     if status == "approved":
-        update(user_id, StatusEnum.READY.value)
+        tempo_core.user.update(user_id, status=StatusEnum.READY.value)
         return render_template("phone_validated_template.html")
 
     return render_template(
         "invalid_input_template.html",
-        phone=details_user.get("phone"),
+        phone=user.phone,
         user_id=user_id
     )
 
@@ -112,42 +107,34 @@ def confirm_token(token, expiration=300):
     serializer = URLSafeTimedSerializer(secret_key)
     try:
         email = serializer.loads(token, salt=salt, max_age=expiration)
-    except Exception:
+    except SignatureExpired:
+        return False
+    except BadSignature:
         return False
     return email
 
 
-def handle_phone_number(phone: str):
+@routes.route('/security/resend-email/<username>', methods=['POST'])
+def resend_email(username):
     """
-    Send a text with a code to the user using Twilio API
-    :param phone: phone to send the text
-    :return: Send the text
+    Route used to send a confirmation email if there has been a problem with the token
+    :param username: username requiring a new email address
+    :return: HTML template to confirm delivery or indicate an error
     """
+    user = tempo_core.user.get_instance_by_key(username=username)
+    if not user:
+        return render_template("error_template.html"), 404
 
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    token = session.get('email_token')
 
-    client = Client(account_sid, auth_token)
+    if not token:
+        return render_template("email_resend_template.html"), 202
 
-    client.verify.v2.services(
-        os.environ.get("TWILIO_SERVICE")
-    ).verifications.create(to=phone, channel="sms")
+    session.pop('email_token', None)
 
+    try:
+        handle_email(user_email=user.email, username=username, user_id=user.id)
+    except (smtplib.SMTPException, KeyError):
+        return render_template("error_template.html"), 500
 
-def check_phone_auth(code: str, phone: str):
-    """
-    Check the code entered by the user
-    :param code: Input code entered by the user
-    :param phone: Phone number the code was sent to
-    :return: Response status of Twilio, "approved" if the code is right
-    """
-
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-
-    client = Client(account_sid, auth_token)
-    verification_check = client.verify.v2.services(
-        os.environ.get("TWILIO_SERVICE")
-    ).verification_checks.create(to=phone, code=code)
-
-    return verification_check.status
+    return render_template("email_resend_template.html"), 202

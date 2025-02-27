@@ -1,13 +1,22 @@
 import hashlib
+import os
+import smtplib
 from unittest.mock import patch
 
 import pytest
 
-from controllers.user_controller import (generate_substrings,
-                                         get_user_by_username,
-                                         get_user_details, get_user_info,
-                                         get_users, patch_user, post_users)
-from models.user import StatusEnum
+from adapters.hibp_client import HibpClient
+from controllers.user_controller import (
+    generate_substrings,
+    get_user_by_username,
+    get_user_details,
+    get_user_info,
+    get_users,
+    post_users
+)
+from core.models import Question
+from core.models.role import Role, RoleEnum
+from core.models.user import StatusEnum, User
 from tests.unit.testing_utils import generate_password
 
 
@@ -15,17 +24,28 @@ from tests.unit.testing_utils import generate_password
 class TestGetUsers:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_user_list = patch(
-            "controllers.user_controller.user_list"
+    def setup_method(self, request, user):
+        self.patch_core = patch("controllers.user_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        self.user1 = user
+
+        self.user2 = User(
+            id=2,
+            username="second",
+            email="second@email.com",
+            password="password",
+            salt="abcde",
+            phone="0102030405",
+            devices="['iphone']",
+            status=StatusEnum.CHECKING_EMAIL
         )
-        self.mock_user_list = self.patch_user_list.start()
-        request.addfinalizer(self.patch_user_list.stop)
 
     def test_get_questions(self):
         # Given
-        user_list = ["Question 1", "Question 2", "Question 3"]
-        self.mock_user_list.return_value = user_list
+        user_list = [self.user1, self.user2]
+        self.mock_core.user.get_all.return_value = user_list
 
         # When
         response, status_code = get_users()
@@ -34,22 +54,26 @@ class TestGetUsers:
         assert status_code == 200
         assert isinstance(response, dict)
         assert "users" in response
-        assert response["users"] == user_list
-        self.mock_user_list.assert_called_with()
+        assert response["users"] == [self.user1.to_dict(), self.user2.to_dict()]
+        self.mock_core.user.get_all.assert_called_with()
 
-    def test_get_questions_empty_output(self):
+    def test_get_questions_with_status(self):
         # Given
-        self.mock_user_list.return_value = None
+        user_list = [self.user1, self.user2]
+        self.mock_core.user.get_list_by_key.return_value = user_list
+        kwargs = {
+            "status": StatusEnum.READY
+        }
 
         # When
-        response, status_code = get_users()
+        response, status_code = get_users(**kwargs)
 
         # Then
         assert status_code == 200
         assert isinstance(response, dict)
         assert "users" in response
-        assert response["users"] == []
-        self.mock_user_list.assert_called_with()
+        assert response["users"] == [self.user1.to_dict(), self.user2.to_dict()]
+        self.mock_core.user.get_list_by_key.assert_called_with(status=StatusEnum.READY)
 
 
 @pytest.mark.usefixtures("session")
@@ -57,18 +81,14 @@ class TestGetUserByUsername:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        self.patch_get_by_username = patch(
-            "controllers.user_controller.get_by_username"
-        )
-        self.mock_get_by_username = self.patch_get_by_username.start()
-        request.addfinalizer(self.patch_get_by_username.stop)
+        self.patch_core = patch("controllers.user_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
 
-    def test_get_user_by_username(self):
+    def test_get_user_by_username(self, user):
         # Given
-        username_str = "username"
-        kwargs = {"username": username_str}
-        user = {"id": 1, "username": username_str}
-        self.mock_get_by_username.return_value = user
+        kwargs = {"username": user.username}
+        self.mock_core.user.get_instance_by_key.return_value = user
 
         # When
         response, status_code = get_user_by_username(**kwargs)
@@ -77,24 +97,13 @@ class TestGetUserByUsername:
         assert status_code == 200
         assert isinstance(response, dict)
         assert "user" in response
-        assert response["user"] == user
-        self.mock_get_by_username.assert_called_with(username_str)
+        assert response["user"] == user.to_dict()
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
-    def test_get_user_by_username_no_kwargs(self):
-        # When
-        response, status_code = get_user_by_username()
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_username.assert_not_called()
-
-    def test_get_user_by_username_not_found(self):
+    def test_get_user_by_username_not_found(self, user):
         # Given
-        username_str = "username"
-        kwargs = {"username": username_str}
-        self.mock_get_by_username.return_value = None
+        kwargs = {"username": user.username}
+        self.mock_core.user.get_instance_by_key.return_value = None
 
         # When
         response, status_code = get_user_by_username(**kwargs)
@@ -103,26 +112,44 @@ class TestGetUserByUsername:
         assert status_code == 404
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_by_username.assert_called_with(username_str)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
 
 @pytest.mark.usefixtures("session")
 class TestGetUserDetails:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_get_details = patch(
-            "controllers.user_controller.get_details"
-        )
-        self.mock_get_details = self.patch_get_details.start()
-        request.addfinalizer(self.patch_get_details.stop)
+    def setup_method(self, request, user):
+        self.patch_core = patch("controllers.user_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
 
-    def test_get_user_details(self):
+        role_user = Role(id=1, name=RoleEnum.USER)
+        role_admin = Role(id=2, name=RoleEnum.ADMIN)
+
+        user.roles = [role_user]
+
+        self.admin_user = User(
+            id=2,
+            username="admin",
+            email="admin@email.com",
+            password="adminpassword",
+            salt="xyz",
+            phone="0602030405",
+            devices="['android']",
+            status=StatusEnum.READY
+        )
+        self.admin_user.roles = [role_admin]
+
+        self.mock_core.user.get_instance_by_key.side_effect = lambda username: (
+            user if username == "username" else self.admin_user
+        )
+
+    def test_get_user_details_user_role(self, user):
         # Given
-        user_id = 1
-        kwargs = {"userId": user_id}
-        user = {"id": 1, "username": "username"}
-        self.mock_get_details.return_value = user
+        kwargs = {"userId": user.id, "user": user.username}
+        self.mock_core.user.get_instance_by_key.return_value = user
+        self.mock_core.user.get_details.return_value = user.to_dict()
 
         # When
         response, status_code = get_user_details(**kwargs)
@@ -131,24 +158,31 @@ class TestGetUserDetails:
         assert status_code == 200
         assert isinstance(response, dict)
         assert "user" in response
-        assert response["user"] == user
-        self.mock_get_details.assert_called_with(user_id)
+        assert response["user"] == user.to_dict()
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_core.user.get_details.assert_called_with(user.id)
 
-    def test_get_user_details_no_kwargs(self):
+    def test_get_user_details_user_role_not_allowed(self, user):
+        # Given
+        kwargs = {"userId": 10, "user": user.username}
+        self.mock_core.user.get_instance_by_key.return_value = user
+        self.mock_core.user.get_details.return_value = user.to_dict()
+
         # When
-        response, status_code = get_user_details()
+        response, status_code = get_user_details(**kwargs)
 
         # Then
-        assert status_code == 400
+        assert status_code == 401
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_details.assert_not_called()
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_core.user.get_details.assert_called_with(10)
 
-    def test_get_user_details_not_found(self):
+    def test_get_user_details_user_role_not_found(self, user):
         # Given
-        username_str = "username"
-        kwargs = {"userId": username_str}
-        self.mock_get_details.return_value = None
+        kwargs = {"userId": user.id, "user": user.username}
+        self.mock_core.user.get_instance_by_key.return_value = user
+        self.mock_core.user.get_details.return_value = None
 
         # When
         response, status_code = get_user_details(**kwargs)
@@ -157,124 +191,44 @@ class TestGetUserDetails:
         assert status_code == 404
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_details.assert_called_with(username_str)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_core.user.get_details.assert_called_with(user.id)
 
+    def test_get_user_details_admin_role(self):
+        # Given
+        kwargs = {"userId": self.admin_user.id, "user": self.admin_user.username}
+        self.mock_core.user.get_instance_by_key.return_value = self.admin_user
+        self.mock_core.user.get_details.return_value = self.admin_user.to_dict()
 
-@pytest.mark.usefixtures("session")
-class TestPatchUser:
+        # When
+        response, status_code = get_user_details(**kwargs)
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self, request):
-        self.patch_get_details = patch(
-            "controllers.user_controller.get_details"
+        # Then
+        assert status_code == 200
+        assert isinstance(response, dict)
+        assert "user" in response
+        assert response["user"] == self.admin_user.to_dict()
+        self.mock_core.user.get_instance_by_key.assert_called_with(
+            username=self.admin_user.username
         )
-        self.mock_get_details = self.patch_get_details.start()
-        request.addfinalizer(self.patch_get_details.stop)
+        self.mock_core.user.get_details.assert_called_with(self.admin_user.id)
 
-        self.patch_update = patch("controllers.user_controller.update")
-        self.mock_update = self.patch_update.start()
-        request.addfinalizer(self.patch_update.stop)
-
-    def test_patch_user(self):
+    def test_get_user_details_user_invalid_role(self, user):
         # Given
-        user_id = 1
-        status = StatusEnum.READY
-        kwargs = {
-            "userId": user_id,
-            "body": {
-                "status": status
-            }
-        }
-        user = {"id": 1, "username": "username", "status": status}
-        self.mock_update.return_value = user
+        kwargs = {"userId": user.id, "user": user.username}
+        user.roles = []
+        self.mock_core.user.get_instance_by_key.return_value = user
+        self.mock_core.user.get_details.return_value = user.to_dict()
 
         # When
-        response, status_code = patch_user(**kwargs)
+        response, status_code = get_user_details(**kwargs)
 
         # Then
-        assert status_code == 200
-        assert isinstance(response, dict)
-        assert "user" in response
-        assert response["user"] == user
-        self.mock_get_details.assert_not_called()
-        self.mock_update.assert_called_with(user_id, status)
-
-    def test_patch_user_no_kwargs(self):
-        # When
-        response, status_code = patch_user()
-
-        # Then
-        assert status_code == 400
+        assert status_code == 401
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_details.assert_not_called()
-        self.mock_update.assert_not_called()
-
-    def test_patch_user_invalid_kwargs(self):
-        # Given
-        user_id = 1
-        kwargs = {
-            "userId": user_id,
-        }
-
-        # When
-        response, status_code = patch_user(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_details.assert_not_called()
-        self.mock_update.assert_not_called()
-
-    def test_patch_user_no_status(self):
-        # Given
-        user_id = 1
-        kwargs = {
-            "userId": user_id,
-            "body": {
-                "something": "useless"
-            }
-        }
-        user = {
-            "id": 1,
-            "username": "username",
-            "email": "fake@gmail.com"
-        }
-        self.mock_get_details.return_value = user
-
-        # When
-        response, status_code = patch_user(**kwargs)
-
-        # Then
-        assert status_code == 200
-        assert isinstance(response, dict)
-        assert "user" in response
-        assert response["user"] == user
-        self.mock_get_details.assert_called_with(user_id)
-        self.mock_update.assert_not_called()
-
-    def test_patch_user_not_found(self):
-        # Given
-        user_id = 1
-        status = StatusEnum.READY
-        kwargs = {
-            "userId": user_id,
-            "body": {
-                "status": status
-            }
-        }
-        self.mock_update.return_value = None
-
-        # When
-        response, status_code = patch_user(**kwargs)
-
-        # Then
-        assert status_code == 404
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_details.assert_not_called()
-        self.mock_update.assert_called_with(user_id, status)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_core.user.get_details.assert_called_with(user.id)
 
 
 @pytest.mark.usefixtures("session")
@@ -282,58 +236,32 @@ class TestPostUser:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        self.patch_get_by_id = patch(
-            "controllers.user_controller.get_by_id"
-        )
-        self.mock_get_by_id = self.patch_get_by_id.start()
-        request.addfinalizer(self.patch_get_by_id.stop)
+        patch_core = patch("controllers.user_controller.tempo_core")
+        self.mock_core = patch_core.start()
+        request.addfinalizer(patch_core.stop)
 
-        self.patch_get_by_username = patch(
-            "controllers.user_controller.get_by_username"
-        )
-        self.mock_get_by_username = self.patch_get_by_username.start()
-        request.addfinalizer(self.patch_get_by_username.stop)
-
-        self.patch_get_user_info = patch(
+        patch_get_user_info = patch(
             "controllers.user_controller.get_user_info"
         )
-        self.mock_get_user_info = self.patch_get_user_info.start()
-        request.addfinalizer(self.patch_get_user_info.stop)
+        self.mock_get_user_info = patch_get_user_info.start()
+        request.addfinalizer(patch_get_user_info.stop)
 
-        self.patch_env_variable = patch(
-            "controllers.user_controller.os.environ.get"
-        )
-        self.mock_env_variable = self.patch_env_variable.start()
-        request.addfinalizer(self.patch_env_variable.stop)
+        os.environ["PEPPER"] = "pepper"
 
-        self.patch_call_to_api = patch(
-            "controllers.user_controller.call_to_api"
-        )
-        self.mock_call_to_api = self.patch_call_to_api.start()
-        request.addfinalizer(self.patch_call_to_api.stop)
+        patch_hibp = patch.object(HibpClient, "check_breach")
+        self.mock_hibp = patch_hibp.start()
+        request.addfinalizer(patch_hibp.stop)
 
-        self.patch_create = patch("controllers.user_controller.create")
-        self.mock_create = self.patch_create.start()
-        request.addfinalizer(self.patch_create.stop)
-
-        self.patch_add_question_to_user = patch(
-            "controllers.user_controller.add_question_to_user"
-        )
-        self.mock_add_question_to_user = (
-            self.patch_add_question_to_user.start()
-        )
-        request.addfinalizer(self.patch_add_question_to_user.stop)
-
-        self.patch_handle_email = patch(
+        patch_handle_email = patch(
             "controllers.user_controller.handle_email"
         )
-        self.mock_handle_email = self.patch_handle_email.start()
-        request.addfinalizer(self.patch_handle_email.stop)
+        self.mock_handle_email = patch_handle_email.start()
+        request.addfinalizer(patch_handle_email.stop)
 
         self.valid_kwargs = {
             "body": {
                 "username": "username",
-                "email": "fake@email.com",
+                "email": "username@email.com",
                 "password": generate_password(
                     length=10,
                     use_upper=True,
@@ -352,28 +280,25 @@ class TestPostUser:
                 "phone": "123456789"
             }
         }
-        self.valid_password = generate_password(
-            length=10,
-            use_upper=True,
-            use_lower=True,
-            use_digits=True,
-            allow_repetitions=False,
-            allow_series=False
-        ),
+        self.question = Question(
+            id=1,
+            question="question?"
+        )
 
-    def test_post_user(self):
+        self.role = Role(
+            id=1,
+            name=RoleEnum.USER
+        )
+
+    def test_post_user(self, user):
         # Given
-        status = StatusEnum.READY
         kwargs = self.valid_kwargs
-        user = {"id": 1, "username": "username", "status": status}
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
         self.mock_get_user_info.return_value = ["username", "fake"]
-        self.mock_call_to_api.text.return_value = "ok"
-        self.mock_create.return_value = user
-        self.mock_env_variable.return_value = "pepper"
+        self.mock_hibp.return_value = ["ok"]
+        self.mock_core.user.create.return_value = user
+        self.mock_core.role.get_instance_by_key.return_value = self.role
 
         # When
         response, status_code = post_users(**kwargs)
@@ -382,337 +307,212 @@ class TestPostUser:
         assert status_code == 202
         assert isinstance(response, dict)
         assert "user" in response
-        assert response["user"] == user
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
+        assert response["user"] == user.to_dict()
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
         self.mock_get_user_info.assert_called_with(
-            "username",
-            "fake@email.com"
+            user.username,
+            user.email
         )
-        self.mock_env_variable.assert_called()
-        self.mock_call_to_api.assert_called()
-        self.mock_create.assert_called_once()
-        self.mock_add_question_to_user.assert_called()
+        self.mock_hibp.assert_called_once()
+        self.mock_core.user.create.assert_called_once()
+        self.mock_core.role.get_instance_by_key.assert_called_once_with(name=self.role.name)
+        self.mock_core.user_role.create.assert_called_once_with(
+            user_id=user.id,
+            role_id=self.role.id
+        )
+        self.mock_core.user_questions.create.assert_called()
+        self.mock_handle_email.assert_called_once_with(
+            user_email=user.email,
+            username=user.username,
+            user_id=user.id
+        )
 
-    def test_post_user_no_payload(self):
+    def test_post_user_question_wrong_input_question_id(self):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["questions"] = [{"response": "answer"}]
+
         # When
-        response, status_code = post_users()
+        response, status_code = post_users(**kwargs)
 
         # Then
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_by_id.assert_not_called()
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
+        self.mock_core.question.get_by_id.assert_not_called()
 
-    def test_post_user_invalid_payload(self):
-        valid_payload = {
-            "username": "username",
-            "email": "fake@email.com",
-            "password": self.valid_password,
-            "questions": [{"questionId": 1, "response": "answer"}],
-            "device": "iphone",
-            "phone": "123456789"
-        }
+    def test_post_user_question_wrong_input_response(self):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["questions"] = [{"questionId": 1}]
 
-        invalid_payloads = [
-            {**valid_payload, "username": None},
-            {**valid_payload, "email": None},
-            {**valid_payload, "password": None},
-            {**valid_payload, "questions": None},
-            {**valid_payload, "device": None},
-            {**valid_payload, "phone": None},
-            {**valid_payload, "questions": [{"response": "answer"}]},
-            {**valid_payload, "questions": [{"questionId": 1}]}
-        ]
+        # When
+        response, status_code = post_users(**kwargs)
 
-        for payload in invalid_payloads:
-            payload = {k: v for k, v in payload.items() if v is not None}
-            kwargs = {"body": payload}
-
-            # When
-            response, status_code = post_users(**kwargs)
-
-            # Then
-            assert status_code == 400
-            assert isinstance(response, dict)
-            assert "message" in response
-            self.mock_get_by_id.assert_not_called()
-            self.mock_get_by_username.assert_not_called()
-            self.mock_get_user_info.assert_not_called()
-            self.mock_env_variable.assert_not_called()
-            self.mock_call_to_api.assert_not_called()
-            self.mock_create.assert_not_called()
-            self.mock_add_question_to_user.assert_not_called()
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_not_called()
 
     def test_post_user_question_not_found(self):
         # Given
         kwargs = self.valid_kwargs
-        self.mock_get_by_id.return_value = None
+        self.mock_core.question.get_by_id.return_value = None
 
         # When
         response, status_code = post_users(**kwargs)
 
         # Then
-        assert status_code == 400
+        assert status_code == 404
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_not_called()
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
 
-    def test_post_user_username_exists(self):
-        # Given
-        status = StatusEnum.READY
-        kwargs = self.valid_kwargs
-        user = {"id": 1, "username": "username", "status": status}
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = user
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_password_repetition(self):
-        # Given
-        print(generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=True,
-                    allow_series=False
-                ))
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=True,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_password_series(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=True
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_invalid_password_requirements(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=False,
-                    use_lower=True,
-                    use_digits=False,
-                    allow_repetitions=False,
-                    allow_series=False
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_not_called()
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_insecure_password(self):
-        # Given
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": generate_password(
-                    length=10,
-                    use_upper=True,
-                    use_lower=True,
-                    use_digits=True,
-                    allow_repetitions=False,
-                    allow_series=False,
-                    word="username"
-                ),
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
-        self.mock_get_user_info.return_value = ["username", "fake"]
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with(
-            "username",
-            "fake@email.com"
-        )
-        self.mock_env_variable.assert_not_called()
-        self.mock_call_to_api.assert_not_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_api_call_failed(self):
+    def test_post_user_user_already_exists(self, user):
         # Given
         kwargs = self.valid_kwargs
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
-        self.mock_get_user_info.return_value = ["username", "fake"]
-        self.mock_call_to_api.return_value = None
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = user
 
         # When
         response, status_code = post_users(**kwargs)
 
         # Then
-        assert status_code == 500
+        assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with(
-            "username",
-            "fake@email.com"
-        )
-        self.mock_env_variable.assert_called()
-        self.mock_call_to_api.assert_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
-    def test_post_user_previously_hacked_password(self):
+    def test_post_user_invalid_password_length(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = generate_password(
+            length=8,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=False,
+            allow_series=False
+        )
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+
+    def test_post_user_invalid_password_repetition(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = generate_password(
+            length=10,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=True,
+            allow_series=False
+        )
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+
+    def test_post_user_invalid_password_series(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = generate_password(
+            length=10,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=False,
+            allow_series=True
+        )
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+
+    def test_post_user_invalid_password_requirements(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = generate_password(
+            length=10,
+            use_upper=False,
+            use_lower=True,
+            use_digits=False,
+            allow_repetitions=False,
+            allow_series=False
+        )
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+
+    def test_post_user_invalid_password_personal_info(self, user):
+        # Given
+        password = generate_password(
+            length=10,
+            use_upper=True,
+            use_lower=True,
+            use_digits=True,
+            allow_repetitions=False,
+            allow_series=False
+        )
+        kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = password
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+        self.mock_get_user_info.return_value = [password]
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_get_user_info.assert_called_with(
+            user.username,
+            user.email
+        )
+
+    def test_post_user_insecure_password(self, user):
         # Given
         password = generate_password(
             length=10,
@@ -730,64 +530,12 @@ class TestPostUser:
         )
         hash_end = hashed_password[5:]
 
-        kwargs = {
-            "body": {
-                "username": "username",
-                "email": "fake@email.com",
-                "password": password,
-                "questions": [
-                    {
-                        "questionId": 1,
-                        "response": "answer"
-                    }
-                ],
-                "device": "iphone",
-                "phone": "123456789"
-            }
-        }
-
-        self.mock_get_by_id.return_value = {"id": 1}
-        self.mock_get_by_username.return_value = None
-        self.mock_get_user_info.return_value = ["username", "fake"]
-
-        self.mock_env_variable.return_value = "pepper"
-        self.mock_call_to_api.return_value.text.splitlines.return_value = [
-            f"{hash_end}:ok"
-        ]
-
-        # When
-        response, status_code = post_users(**kwargs)
-
-        # Then
-        assert status_code == 400
-        assert isinstance(response, dict)
-        assert "message" in response
-        assert response["message"] == "Password is too weak."
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
-        self.mock_get_user_info.assert_called_with(
-            "username",
-            "fake@email.com"
-        )
-        self.mock_env_variable.assert_called()
-        self.mock_call_to_api.assert_called()
-        self.mock_create.assert_not_called()
-        self.mock_add_question_to_user.assert_not_called()
-
-    def test_post_user_handle_email_exception(self):
-        # Given
-        status = StatusEnum.READY
         kwargs = self.valid_kwargs
-        user = {"id": 1, "username": "username", "status": status}
-        self.mock_get_by_id.return_value = {
-            "id": 1
-        }
-        self.mock_get_by_username.return_value = None
+        kwargs["body"]["password"] = password
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
         self.mock_get_user_info.return_value = ["username", "fake"]
-        self.mock_call_to_api.text.return_value = "ok"
-        self.mock_create.return_value = user
-        self.mock_env_variable.return_value = "pepper"
-        self.mock_handle_email.side_effect = Exception("email error")
+        self.mock_hibp.return_value = [f"{hash_end}:ok"]
 
         # When
         response, status_code = post_users(**kwargs)
@@ -796,21 +544,73 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
-        assert response["message"] == "Verification email cannot be send"
-        self.mock_get_by_id.assert_called_with(1)
-        self.mock_get_by_username.assert_called_with("username")
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
         self.mock_get_user_info.assert_called_with(
-            "username",
-            "fake@email.com"
+            user.username,
+            user.email
         )
-        self.mock_env_variable.assert_called()
-        self.mock_call_to_api.assert_called()
-        self.mock_create.assert_called_once()
-        self.mock_add_question_to_user.assert_called()
-        self.mock_handle_email.assert_called_with(
-            user_email="fake@email.com",
-            username="username",
-            user_id=1
+        self.mock_hibp.assert_called_once()
+
+    def test_post_user_hibp_error(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+        self.mock_get_user_info.return_value = ["username", "fake"]
+        self.mock_hibp.return_value = []
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 500
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_get_user_info.assert_called_with(
+            user.username,
+            user.email
+        )
+        self.mock_hibp.assert_called_once()
+
+    def test_post_user_email_error(self, user):
+        # Given
+        kwargs = self.valid_kwargs
+        self.mock_core.question.get_by_id.return_value = self.question
+        self.mock_core.user.get_instance_by_key.return_value = None
+        self.mock_get_user_info.return_value = ["username", "fake"]
+        self.mock_hibp.return_value = ["ok"]
+        self.mock_core.user.create.return_value = user
+        self.mock_core.role.get_instance_by_key.return_value = self.role
+        self.mock_handle_email.side_effect = smtplib.SMTPException
+
+        # When
+        response, status_code = post_users(**kwargs)
+
+        # Then
+        assert status_code == 500
+        assert isinstance(response, dict)
+        assert "message" in response
+        self.mock_core.question.get_by_id.assert_called_with(self.question.id)
+        self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
+        self.mock_get_user_info.assert_called_with(
+            user.username,
+            user.email
+        )
+        self.mock_hibp.assert_called_once()
+        self.mock_core.user.create.assert_called_once()
+        self.mock_core.role.get_instance_by_key.assert_called_once_with(name=self.role.name)
+        self.mock_core.user_role.create.assert_called_once_with(
+            user_id=user.id,
+            role_id=self.role.id
+        )
+        self.mock_core.user_questions.create.assert_called()
+        self.mock_handle_email.assert_called_once_with(
+            user_email=user.email,
+            username=user.username,
+            user_id=user.id
         )
 
 

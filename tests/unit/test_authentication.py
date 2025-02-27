@@ -1,4 +1,5 @@
 import hashlib
+import os
 from unittest.mock import patch
 
 import pytest
@@ -11,34 +12,23 @@ class TestBasicAuth:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, request):
-        self.patch_get_by_username = patch("authentication.get_by_username")
-        self.mock_get_by_username = self.patch_get_by_username.start()
-        request.addfinalizer(self.patch_get_by_username.stop)
+        self.patch_core = patch("authentication.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
 
-        self.patch_get_security_infos = patch(
-            "authentication.get_security_infos"
-        )
-        self.mock_get_security_infos = self.patch_get_security_infos.start()
-        request.addfinalizer(self.patch_get_security_infos.stop)
+        self.pepper = "pepper"
+        os.environ["PEPPER"] = self.pepper
 
-        self.patch_env_variable = patch("authentication.os.environ.get")
-        self.mock_env_variable = self.patch_env_variable.start()
-        request.addfinalizer(self.patch_env_variable.stop)
-
-    def test_basic_auth(self):
+    def test_basic_auth(self, user):
         # Given
         username_input = "username"
         password_input = "password"
-        to_encode = "pepper" + password_input + "salt"
+        to_encode = self.pepper + password_input + user.salt
         hashed_password = hashlib.sha256(
             to_encode.encode("utf-8")
         ).hexdigest().upper()
-        self.mock_env_variable.return_value = "pepper"
-        self.mock_get_by_username.return_value = {"id": 1}
-        self.mock_get_security_infos.return_value = {
-            "salt": "salt",
-            "password": hashed_password
-        }
+        user.password = hashed_password
+        self.mock_core.user.get_instance_by_key.return_value = user
 
         # When
         response = basic_auth(username_input, password_input)
@@ -72,8 +62,7 @@ class TestBasicAuth:
         # Given
         username_input = "username"
         password_input = "password"
-        self.mock_env_variable.return_value = "pepper"
-        self.mock_get_by_username.return_value = None
+        self.mock_core.user.get_instance_by_key.return_value = None
 
         # When
         response = basic_auth(username_input, password_input)
@@ -81,17 +70,11 @@ class TestBasicAuth:
         # Then
         assert not response
 
-    def test_basic_auth_wrong_password(self):
+    def test_basic_auth_wrong_password(self, user):
         # Given
         username_input = "username"
         password_input = "password"
-        wrong_input = "wrong"
-        self.mock_env_variable.return_value = "pepper"
-        self.mock_get_by_username.return_value = {"id": 1}
-        self.mock_get_security_infos.return_value = {
-            "salt": "salt",
-            "password": wrong_input
-        }
+        self.mock_core.user.get_instance_by_key.return_value = user
 
         # When
         response = basic_auth(username_input, password_input)
