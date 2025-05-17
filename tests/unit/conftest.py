@@ -1,7 +1,11 @@
+import json
+from datetime import datetime
+
 import pytest
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app import app
+from core.models import Connection, ConnectionStatusEnum
 from core.models.user import StatusEnum, User
 from extensions import db
 
@@ -13,9 +17,6 @@ def test_app():
     """
     app.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.app.config["TESTING"] = True
-    app.app.config["TWILIO_ACCOUNT_SID"] = "account_id"
-    app.app.config["TWILIO_AUTH_TOKEN"] = "token"
-    app.app.config["TWILIO_SERVICE"] = "service"
 
     with app.app.app_context():
         db.create_all()
@@ -58,6 +59,19 @@ def user():
         password="password",
         salt="abcde",
         phone="0102030405",
-        devices="['iphone']",
+        devices=json.dumps(["iphone"]),
         status=StatusEnum.READY
+    )
+
+
+@pytest.fixture
+def connection(user):
+    return Connection(
+        id=1,
+        user_id=user.id,
+        date=datetime(2025, 1, 1),
+        device="iphone",
+        ip_address="0.0.0.0",
+        output=json.dumps({"question": "What is the capital of France ?"}),
+        status=ConnectionStatusEnum.SUCCESS
     )

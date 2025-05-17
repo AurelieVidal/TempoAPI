@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Responsive</title>
+    <style>
+        body {
+            font-family: "Kanit", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            width: 100%;
+        }
+
+        li {
+            list-style-type: none;
+        }
+
+        p.detail {
+            margin: 5px 0;
+            padding: 0;
+            line-height: 1;
+            color: #500050;
+        }
+
+        .maincontainer {
+            background-color: #FFF5FE;
+            width: 90%;
+            max-width: 600px;
+            margin: 20px auto;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+            border: 2px solid #ffc8fe;
+        }
+        .band {
+            display: block;
+            padding: 10px 0;
+            text-align: center;
+            line-height: 0; /* Retire les espaces blancs */
+        }
+        .square {
+            display: inline-block;
+            border-radius: 10%;
+            margin: 5px;
+            vertical-align: middle;
+        }
+        .big {
+            height: 10vw;
+            width: 10vw;
+            max-width: 40px;
+            max-height: 40px;
+        }
+        .small {
+            height: 8vw;
+            width: 8vw;
+            max-width: 30px;
+            max-height: 30px;
+        }
+        .pink {
+            background-color: #EA65F0;
+        }
+        .purple {
+            background-color: #BC64EF;
+        }
+        .blue {
+            background-color: #6568F0;
+        }
+        .red {
+            background-color: #F065A6;
+        }
+        .darkpurple {
+            background-color: #8F65F0;
+        }
+        .content {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .title {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .buttondiv {
+            margin: 20px 0;
+        }
+        .button {
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px;
+            max-font-size: 16px;
+            padding: 10px 20px;
+            border: 2px solid #6568F0;
+            background-color: white;
+            color: #6568F0;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #6568F0;
+            color: white;
+        }
+
+        .button_secure {
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px;
+            max-font-size: 16px;
+            padding: 10px 20px;
+            border: 2px solid #F065A6;
+            background-color: white;
+            color: #F065A6 !important;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button_secure:hover {
+            background-color: #F065A6;
+            color: white !important;
+        }
+        .footer {
+            font-size: 12px;
+            max-font-size: 12px;
+            color: #999;
+            text-align: center;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="maincontainer">
+        <div class="band">
+            <span class="square pink big"></span>
+            <span class="square purple small"></span>
+            <span class="square blue big"></span>
+            <span class="square red small"></span>
+            <span class="square darkpurple big"></span>
+        </div>
+
+        <div class="content">
+            <p class="title"> Alerte de sécurité – Connexion suspecte détectée</p>
+            <p>Hello {{ username }}, <br/><br/>
+                Nous avons détecté une connexion inhabituelle à ton compte.
+                Pour nous assurer de ton identité, nous te demandons de sécuriser ton compte le plus rapidement possible.
+            </p>
+
+            <p>📍 Détails de la connexion suspecte</p>
+
+            <p class="detail">Date et heure : {{timestamp}}</p>
+            <p class="detail">Adresse IP : {{ip_address}}</p>
+            <p class="detail">Appareil : {{device}}</p>
+
+            <p>Si cette connexion est légitime, confirme-la ici :</p>
+
+            <div class="buttondiv">
+                <a href="{{  button_link }}" class="button">Je suis à l'origine de la connexion</a>
+            </div>
+            <p>Si ce n'est pas le cas, nous te recommendons d'agir immédiatement :</p>
+            <div class="buttondiv">
+                <a href="{{  button_link_reset }}" class="button_secure">Sécuriser mon compte</a>
+            </div>
+            <p>À bientôt sur Tempo !<br/>L’équipe Tempo 😊</p>
+        </div>
+
+        <div class="band">
+            <span class="square purple small"></span>
+            <span class="square pink big"></span>
+            <span class="square darkpurple small"></span>
+            <span class="square red big"></span>
+            <span class="square blue small"></span>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2024 Tempo. Tous droits réservés.
+    </div>
+</body>
+</html>

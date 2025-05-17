@@ -9,7 +9,7 @@ from adapters.hibp_client import HibpClient
 from core.models.role import RoleEnum
 from core.models.user import StatusEnum
 from core.tempo_core import tempo_core
-from utils.utils import handle_email
+from utils.utils import handle_email_create_user, handle_email_password_changed
 
 
 def get_users(**kwargs):
@@ -164,7 +164,7 @@ def post_users(**kwargs):
 
     # Send the verification email
     try:
-        handle_email(user_email=email, username=username, user_id=user.id)
+        handle_email_create_user(user_email=email, username=username, user_id=user.id)
     except (smtplib.SMTPException, KeyError) as e:
         return {"message": f"Erreur lors de l'envoi de l'email : {e.__class__.__name__}"}, 500
 
@@ -182,7 +182,6 @@ def check_password(password: str, username: str, email: str):
     - numbers, upper and lower case letters
     - Password not present in the list of compromised passwords (HIBP API)
     """
-    print("IN CHECK PASSWORD")
     error_message = None
     status_code = 200
 
@@ -190,7 +189,6 @@ def check_password(password: str, username: str, email: str):
     if len(password) < 10:
         error_message = "Password length should be minimum 10."
         status_code = 400
-        print("changed")
 
     # Checking for series or repetitions
     results = re.findall(r"(?=([a-z]{3}|[A-Z]{3}|\d{3}))", password)
@@ -241,8 +239,6 @@ def check_password(password: str, username: str, email: str):
         if line.split(":")[0] == hash_end:
             error_message = "Password is too weak."
             status_code = 400
-    print("message : ", error_message)
-    print("code : ", status_code)
 
     return ({"message": error_message}, status_code) if error_message else None
 
@@ -266,7 +262,10 @@ def get_user_info(username: str, email: str):
     email_first_part = email.split("@")[0].split(".")
     email_second_part = email.split("@")[1].split(".")[0]
 
-    username_substring = generate_substrings(username)
+    username_substring = []
+    if len(username) >= 3:
+        username_substring = generate_substrings(username)
+
     email_info_substring = []
     for info in email_first_part:
         email_info_substring += generate_substrings(info)
@@ -285,5 +284,64 @@ def generate_substrings(word):
     :param word: string we want the substrings of
     :return: substring with more than 4 letters of the word
     """
-
     return [word[0:j + 1].lower() for j in range(4 - 1, len(word))]
+
+
+def reset_password(**kwargs):
+    """
+    PATCH /users/{userId}
+
+    :param kwargs:
+    :return:
+    """
+    username = kwargs.get("user")
+    user_id = kwargs.get("userId")
+    new_password = kwargs.get("body").get("newPassword")
+
+    user = tempo_core.user.get_instance_by_key(username=username)
+
+    if not user:
+        return {
+            "message": f"User with id {user_id} not found"
+        }, 404
+
+    user_roles = [role.name for role in user.roles]
+
+    # Check the validity of the new password
+    check = check_password(password=new_password, username=user.username, email=user.email)
+    if check is not None:
+        return check
+
+    # Hash the password
+    pepper = os.environ.get("PEPPER")
+    new_password = pepper + new_password + user.salt
+    new_password = hashlib.sha256(new_password.encode("utf-8")).hexdigest().upper()
+
+    if new_password == user.password:
+        return {
+            "message": "You cannot use the same password"
+        }, 400
+
+    # Check roles
+    if RoleEnum.ADMIN in user_roles:
+        allowed_to_update = True
+    elif RoleEnum.USER in user_roles:
+        allowed_to_update = int(user_id) == user.id
+        if not allowed_to_update:
+            return {
+                "message": f"You don't have the permission to see information of user {user_id}"
+            }, 401
+    else:
+        return {
+            "message": f"User {user_id} does not have the required role to execute this action"
+        }, 401
+
+    # Update password and send mail
+    if allowed_to_update:
+        tempo_core.user.update(user.id, password=new_password)
+        handle_email_password_changed(user)
+        return {
+            "message": "The password has been successfully reset"
+            if RoleEnum.USER in user_roles else
+            f"The password of user {user.username} has been successfully reset"
+        }, 200

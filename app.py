@@ -1,6 +1,7 @@
 import os
 
 import connexion
+import yaml
 from connexion import FlaskApp
 from flask_mail import Mail
 
@@ -27,7 +28,24 @@ app.app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE")
 db.init_app(app.app)
 
 # Add the Swagger to the API
-app.add_api("swagger.yaml")
+app.add_api("swagger.yaml", options={"swagger_ui": True})
+
+
+def load_secure_paths(swagger_file):
+    with open(swagger_file, "r", encoding="utf-8") as file:
+        swagger_data = yaml.safe_load(file)
+
+    paths = swagger_data.get("paths")
+    secure_paths = set()
+
+    for route_name, value in paths.items():
+        for method, content in value.items():
+            if content.get("security"):
+                secure_paths.add(f"{method.upper()} {route_name}")
+    return secure_paths
+
+
+SECURE_PATHS = load_secure_paths("swagger.yaml")
 
 # Email configuration
 if not os.environ.get("MAIL_USERNAME"):
@@ -59,6 +77,9 @@ app.app.secret_key = os.environ.get("SESSION_SECRET_KEY")
 @app.route("/")
 def hello_world():
     return "Hello World!"
+
+
+app.app.app_context().push()
 
 
 # Launch the application on port 5000

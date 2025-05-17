@@ -3,7 +3,6 @@
 {% block title %}Renvoyer Email{% endblock %}
 
 {% block main %}
-
     <h2>Code incorrect</h2>
     <p>
         Le code que tu as renseigné n'est pas correct ... 😯 <br>
@@ -21,8 +20,11 @@
 
     <div class="resend">
         <p class="resend_message">Tu n'a rien reçu sur ton télephone ?</p>
-        <input type="hidden" id="userId" value="{{ user_id }}" >
-        <button id="resend_button" class="resend_phonebutton" type="submit">Me renvoyer un code</button>
+        <button id="resend_button" class="resend_phone_button" type="submit">Me renvoyer un code</button>
     </div>
-
 {% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/check_user_info.js') }}"></script>
+{% endblock %}
+

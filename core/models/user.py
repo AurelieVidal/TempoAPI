@@ -9,6 +9,7 @@ class StatusEnum(enum.Enum):
     CHECKING_PHONE = "CHECKING_PHONE"
     READY = "READY"
     DELETED = "DELETED"
+    BANNED = "BANNED"
 
 
 class User(db.Model):

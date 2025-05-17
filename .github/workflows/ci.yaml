@@ -30,6 +30,14 @@ jobs:
       run: |
         make test
 
+    - name: Run mutmut
+      run: |
+        make mutmut
+        if make mutmut_results | grep -q '^survived'; then
+          echo "❌ Des mutants ont survécu! Renforcez vos tests."
+          exit 1
+        fi
+
     - name: Lint with flake8
       run: |
         make flake

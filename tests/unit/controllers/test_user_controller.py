@@ -9,7 +9,7 @@ from adapters.hibp_client import HibpClient
 from controllers.user_controller import (generate_substrings,
                                          get_user_by_username,
                                          get_user_details, get_user_info,
-                                         get_users, post_users)
+                                         get_users, post_users, reset_password)
 from core.models import Question
 from core.models.role import Role, RoleEnum
 from core.models.user import StatusEnum, User
@@ -249,7 +249,7 @@ class TestPostUser:
         request.addfinalizer(patch_hibp.stop)
 
         patch_handle_email = patch(
-            "controllers.user_controller.handle_email"
+            "controllers.user_controller.handle_email_create_user"
         )
         self.mock_handle_email = patch_handle_email.start()
         request.addfinalizer(patch_handle_email.stop)
@@ -658,3 +658,166 @@ class TestGenerateSubstrings:
             "substrin",
             "substring"
         ]
+
+
+@pytest.mark.usefixtures("session")
+class TestResetPassword:
+
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request, user):
+        self.patch_core = patch("controllers.user_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        self.patch_check_password = patch("controllers.user_controller.check_password")
+        self.mock_check_password = self.patch_check_password.start()
+        request.addfinalizer(self.patch_check_password.stop)
+
+        self.patch_handle_email_password_changed = patch(
+            "controllers.user_controller.handle_email_password_changed"
+        )
+        self.mock_handle_email_password_changed = self.patch_handle_email_password_changed.start()
+        request.addfinalizer(self.patch_handle_email_password_changed.stop)
+
+        role_user = Role(id=1, name=RoleEnum.USER)
+        user.roles = [role_user]
+        self.user = user
+
+        os.environ["PEPPER"] = "pepper"
+
+        self.kwargs = {
+            "username": self.user.username,
+            "userId": self.user.id,
+            "body": {
+                "newPassword": "new_password"
+            }
+        }
+
+    def test_reset_password(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = None
+
+        # When
+        response, status_code = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_called_once()
+        self.mock_handle_email_password_changed.assert_called_once_with(self.user)
+        assert status_code == 200
+        assert isinstance(response, dict)
+        assert response == {"message": "The password has been successfully reset"}
+
+    def test_reset_password_admin_user(self):
+        # Given
+        role_admin = Role(id=2, name=RoleEnum.ADMIN)
+        self.user.roles = [role_admin]
+
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = None
+
+        # When
+        response, status_code = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_called_once()
+        self.mock_handle_email_password_changed.assert_called_once_with(self.user)
+        assert status_code == 200
+        assert isinstance(response, dict)
+        assert (
+            response
+            == {"message": f"The password of user {self.user.username} has been successfully reset"}
+        )
+
+    def test_reset_password_user_not_found(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response, status_code = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_not_called()
+        self.mock_handle_email_password_changed.assert_not_called()
+        assert status_code == 404
+        assert isinstance(response, dict)
+        assert response == {"message": f"User with id {self.user.id} not found"}
+
+    def test_reset_password_password_not_valid(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = "error"
+
+        # When
+        response = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_not_called()
+        self.mock_handle_email_password_changed.assert_not_called()
+        assert response == "error"
+
+    def test_reset_password_same_password(self):
+        # Given
+
+        pepper = os.environ["PEPPER"]
+        same_password_hash = hashlib.sha256(
+            (pepper + "new_password" + self.user.salt).encode("utf-8")
+        ).hexdigest().upper()
+        self.user.password = same_password_hash
+
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = None
+
+        # When
+        response, status_code = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_not_called()
+        self.mock_handle_email_password_changed.assert_not_called()
+        assert status_code == 400
+        assert isinstance(response, dict)
+        assert response == {"message": "You cannot use the same password"}
+
+    def test_reset_password_unauthorized(self):
+        # Given
+        kwargs = {
+            "username": self.user.username,
+            "userId": self.user.id + 1,
+            "body": {
+                "newPassword": "new_password"
+            }
+        }
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = None
+
+        # When
+        response, status_code = reset_password(**kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_not_called()
+        self.mock_handle_email_password_changed.assert_not_called()
+        assert status_code == 401
+        assert isinstance(response, dict)
+        assert (
+            response["message"]
+            == f"You don't have the permission to see information of user {self.user.id +1}"
+        )
+
+    def test_reset_password_no_required_role(self):
+        # Given
+        self.user.roles = []
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_check_password.return_value = None
+
+        # When
+        response, status_code = reset_password(**self.kwargs)
+
+        # Then
+        self.mock_core.user.update.assert_not_called()
+        self.mock_handle_email_password_changed.assert_not_called()
+        assert status_code == 401
+        assert isinstance(response, dict)
+        assert (
+            response["message"]
+            == f"User {self.user.id} does not have the required role to execute this action"
+        )

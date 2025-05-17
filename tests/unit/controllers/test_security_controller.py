@@ -1,10 +1,18 @@
+import hashlib
+import json
+import os
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
+from freezegun import freeze_time
 
-from controllers.security_controller import (check_user, get_question_by_id,
-                                             get_questions, get_random_list)
-from core.models import Question
+from controllers.security_controller import (check_user, forgotten_password,
+                                             get_question_by_id, get_questions,
+                                             get_random_list,
+                                             validate_connection)
+from core.models import (Connection, ConnectionStatusEnum, Question,
+                         StatusEnum, UserQuestion)
 
 
 @pytest.mark.usefixtures("session")
@@ -158,3 +166,469 @@ class TestCheckUser:
         # Then
         assert status_code == 200
         assert response == {"message": "User successfully authenticated"}
+
+
+@pytest.mark.usefixtures("session")
+class TestValidateConnection:
+
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request, user):
+        self.patch_core = patch("controllers.security_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        connection1 = Connection(
+            id=1,
+            user_id=user.id,
+            date=datetime(2025, 5, 1, 10, 0),
+            device="iPhone 13",
+            ip_address="192.168.1.10",
+            output="Login successful",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+
+        connection2 = Connection(
+            id=2,
+            user_id=user.id,
+            date=datetime(2025, 5, 2, 14, 30),
+            device="MacBook Pro",
+            ip_address="192.168.1.11",
+            output="Login failed: wrong password",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+
+        self.connection_main = Connection(
+            id=3,
+            user_id=user.id,
+            date=datetime.now(),
+            device="iPad",
+            ip_address="192.168.1.12",
+            output="Login successful",
+            status=ConnectionStatusEnum.SUSPICIOUS
+        )
+
+        connection4 = Connection(
+            id=4,
+            user_id=user.id,
+            date=datetime(2025, 5, 4, 17, 45),
+            device="Windows PC",
+            ip_address="10.0.0.1",
+            output="Account locked",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+
+        connection5 = Connection(
+            id=5,
+            user_id=user.id,
+            date=datetime(2025, 5, 5, 12, 0),
+            device="Android Phone",
+            ip_address="172.16.0.2",
+            output="Login failed: timeout",
+            status=ConnectionStatusEnum.VALIDATED
+        )
+
+        self.connection_main.status = ConnectionStatusEnum.VALIDATION_FAILED
+        self.connection_failed_list = [
+            connection1,
+            connection2,
+            self.connection_main,
+            connection4,
+            connection5
+        ]
+
+        self.pepper = "pepper"
+        os.environ["PEPPER"] = self.pepper
+
+        self.question_text = "What is your favorite color?"
+        question = Question(id=1, question=self.question_text)
+        self.answer = "blue"
+
+        expected_hash = hashlib.sha256(
+            (self.pepper + self.answer + user.salt).encode("utf-8")
+        ).hexdigest().upper()
+        user_question = UserQuestion(
+            user_id=user.id,
+            question=question,
+            response=expected_hash
+        )
+
+        user.questions = [user_question]
+        self.user = user
+
+    def test_validate_connection(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert (
+            response["message"]
+            == "Connection has been validated, you can try to authenticate again."
+        )
+        self.mock_core.connection.update.assert_called_with(
+            self.connection_main.id,
+            status=ConnectionStatusEnum.VALIDATED
+        )
+
+    def test_validate_connection_connection_forgot(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.connection_main.status = ConnectionStatusEnum.ASK_FORGOTTEN_PASSWORD
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [],
+            [self.connection_main],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert (
+            response["message"]
+            == "Connection has been validated, you can try to authenticate again."
+        )
+        self.mock_core.connection.update.assert_called_with(
+            self.connection_main.id,
+            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        )
+
+    def test_validate_connection_connection_forgot_invalid_validation_id(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [],
+            [],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 404
+        assert response["message"] == "validationId is not valid"
+        self.mock_core.connection.update.assert_not_called()
+
+    def test_validate_connection_connection_forgot_expired_validation_id(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.connection_main.date = datetime(2022, 5, 4, 17, 45)
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 404
+        assert response["message"] == "validationId is expired"
+        self.mock_core.connection.update.assert_not_called()
+
+    def test_validate_connection_user_not_found(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = None
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 404
+        assert response["message"] == f"User {self.user.username} not found"
+        self.mock_core.connection.update.assert_not_called()
+
+    def test_validate_connection_user_banned(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.user.status = StatusEnum.BANNED
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 401
+        assert response["message"] == f"User {self.user.username} is banned"
+        self.mock_core.connection.update.assert_not_called()
+
+    def test_validate_connection_error_user_question(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.user.questions = []
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": self.answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 500
+        assert response["message"] == "Unexpected error"
+        self.mock_core.connection.update.assert_not_called()
+
+    @freeze_time(datetime.now())
+    def test_validate_connection_invalid_answer(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            self.connection_failed_list
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        answer = "invalid"
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 403
+        assert response["message"] == "Provided answer does not match"
+        self.mock_core.connection.create.assert_called_with(
+            user_id=self.user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.VALIDATION_FAILED,
+        )
+
+    @freeze_time(datetime.now())
+    def test_validate_connection_max_errors(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.connection_failed_list[4].status = ConnectionStatusEnum.VALIDATION_FAILED
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            self.connection_failed_list
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        answer = "invalid"
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 403
+        assert (
+            response["message"]
+            == f"Reached max number of tries, user {self.user.username} is now banned. "
+               "To reactivate the account please contact admin support at t26159970@gmail.com"
+        )
+        self.mock_core.user.update.assert_called_with(
+            self.user.id,
+            status=StatusEnum.BANNED
+        )
+        self.mock_core.connection.create.assert_called_with(
+            user_id=self.user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.VALIDATION_FAILED,
+        )
+
+
+@pytest.mark.usefixtures("session")
+class TestForgottenPassword:
+
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request, user):
+        self.patch_core = patch("controllers.security_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        self.patch_email = patch("controllers.security_controller.handle_email_forgotten_password")
+        self.mock_email = self.patch_email.start()
+        request.addfinalizer(self.patch_email.stop)
+
+        self.user = user
+
+        self.question_text = "What is your favorite color?"
+        question = Question(id=1, question=self.question_text)
+        self.answer = "blue"
+
+        self.pepper = "pepper"
+        os.environ["PEPPER"] = self.pepper
+        expected_hash = hashlib.sha256(
+            (self.pepper + self.answer + user.salt).encode("utf-8")
+        ).hexdigest().upper()
+
+        user_question = UserQuestion(
+            user_id=user.id,
+            question=question,
+            response=expected_hash
+        )
+        self. user.questions = [user_question]
+
+    def test_forgotten_password(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now(),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        )
+        self.mock_core.connection.get_list_by_key.return_value = [last_conn]
+        kwargs = {"username": self.user.username}
+
+        # When
+        response, status_code = forgotten_password(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert response["message"] == "Demand validated, an email has been sent to the user"
+        self.mock_email.assert_called_once_with(self.user)
+
+    def test_forgotten_password_creates_connection(self):
+        # Given: Aucun historique de connexion valide récent
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_core.connection.get_list_by_key.return_value = []  # no last connection
+
+        mock_create = self.mock_core.connection.create
+        mock_create.return_value.id = 123
+
+        kwargs = {"username": self.user.username}
+
+        # When
+        response, status_code = forgotten_password(**kwargs)
+
+        # Then
+        assert status_code == 401
+        assert (
+            response["message"]
+            == "You need to validate connection by answering a security question"
+        )
+        assert response["question"] == self.question_text
+        assert response["validation_id"] == 123
+
+        mock_create.assert_called_once()
+        call_args = mock_create.call_args[1]
+        assert call_args["user_id"] == self.user.id
+        assert call_args["status"] == ConnectionStatusEnum.ASK_FORGOTTEN_PASSWORD
+        assert json.loads(call_args["output"])["question"] == self.question_text
+
+    def test_forgotten_password_error_connection_status(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now(),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.SUSPICIOUS
+        )
+        self.mock_core.connection.get_list_by_key.return_value = [last_conn]
+
+        mock_create = self.mock_core.connection.create
+        mock_create.return_value.id = 123
+
+        kwargs = {"username": self.user.username}
+
+        # When
+        response, status_code = forgotten_password(**kwargs)
+
+        # Then
+        assert status_code == 401
+        assert (
+            response["message"]
+            == "You need to validate connection by answering a security question"
+        )
+        assert response["question"] == self.question_text
+        assert response["validation_id"] == 123
+
+        mock_create.assert_called_once()
+        call_args = mock_create.call_args[1]
+        assert call_args["user_id"] == self.user.id
+        assert call_args["status"] == ConnectionStatusEnum.ASK_FORGOTTEN_PASSWORD
+        assert json.loads(call_args["output"])["question"] == self.question_text
+
+    def test_forgotten_password_user_not_found(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = None
+        kwargs = {"username": "unknown_user"}
+
+        # When
+        response, status_code = forgotten_password(**kwargs)
+
+        # Then
+        assert status_code == 404
+        assert response["message"] == "User unknown_user not found"
