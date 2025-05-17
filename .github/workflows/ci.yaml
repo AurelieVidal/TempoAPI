@@ -36,6 +36,9 @@ jobs:
     - name: Run mutmut
       env:
         DATABASE: "sqlite:///:memory:"
+        MAIL_USERNAME: "fake@example.com"
+        MAIL_PASSWORD: "fakepassword"
+        SESSION_SECRET_KEY: "fakesecretkey"
       run: |
         make mutmut
         if make mutmut_results | grep -q '^survived'; then
