@@ -31,11 +31,8 @@ def handle_email_create_user(user_email: str, username: str, user_id: int):
         f"merci de t’être inscrit(e) à Tempo ! "
         f"Pour vérifier ton adresse email, clique sur le lien suivant : {link}"
     )
-    msg.html = render_template(
-        'email_template.html',
-        username=username,
-        buttonlink=link
-    )
+    msg.html = render_template("subscribe_template.html.j2", username=username, button_link=link)
+
     mail.send(msg)
 
 
@@ -75,8 +72,9 @@ def handle_email_suspicious_connection(user: User, connection: Connection):
         f"Si cette connexion est légitime, confirme-la en cliquant sur le lien suivant : {link}"
         f"Si ce n'est pas le cas, nous te recommendons d'agir immédiatement : {link}"
     )
+
     msg.html = render_template(
-        "suspicious_template.html",
+        "suspicious_template.html.j2",
         username=user.username,
         timestamp=timestamp,
         ip_address=connection.ip_address,
@@ -113,7 +111,7 @@ def handle_email_password_changed(user: User):
     )
 
     msg.html = render_template(
-        'email_password_reset.html',
+        'email_password_reset.html.j2',
         username=user.username,
         button_link=link_block
     )
@@ -146,7 +144,7 @@ def handle_email_forgotten_password(user: User):
         f"Pour vérifier ton adresse email, clique sur le lien suivant : {link}"
     )
     msg.html = render_template(
-        'email_forgot_password_template.html',
+        'email_forgot_password_template.html.j2',
         username=user.username,
         buttonlink=link,
         button_link_reset=link_block

@@ -1,0 +1,27 @@
+{% extends "base_email.html.j2" %}
+
+
+{% block content %}
+    <p class="title"> Alerte de sécurité – Connexion suspecte détectée</p>
+    <p>Hello {{ username }}, <br/><br/>
+        Nous avons détecté une connexion inhabituelle à ton compte.
+        Pour nous assurer de ton identité, nous te demandons de sécuriser ton compte le plus rapidement possible.
+    </p>
+
+    <p>📍 Détails de la connexion suspecte</p>
+
+    <p class="detail">Date et heure : {{timestamp}}</p>
+    <p class="detail">Adresse IP : {{ip_address}}</p>
+    <p class="detail">Appareil : {{device}}</p>
+
+    <p>Si cette connexion est légitime, confirme-la ici :</p>
+
+    <div class="buttondiv">
+        <a href="{{  button_link }}" class="button">Je suis à l'origine de la connexion</a>
+    </div>
+    <p>Si ce n'est pas le cas, nous te recommendons d'agir immédiatement :</p>
+    <div class="buttondiv">
+        <a href="{{  button_link_reset }}" class="button_secure">Sécuriser mon compte</a>
+    </div>
+    <p>À bientôt sur Tempo !<br/>L’équipe Tempo 😊</p>
+{% endblock %}
