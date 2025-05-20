@@ -97,6 +97,9 @@ def check_is_suspicious(user, device, user_ip):
 @app.app.before_request
 def before_request():
     """This code will run before every request"""
+    if not request.url_rule:
+        return
+
     route = request.url_rule.rule.replace("<", "{")
     route = route.replace(">", "}")
     route = f"{request.method} {route}"
