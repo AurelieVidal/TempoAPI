@@ -131,7 +131,7 @@ class TestHandleEmailSuspiciousConnection:
         assert f"Hello {self.user.username}," in sent_msg.body
         assert "Nous avons détecté une connexion inhabituelle à ton compte." in sent_msg.body
         self.mock_render_template.assert_called_once_with(
-            "suspicious_template.html",
+            "suspicious_template.html.j2",
             username=self.user.username,
             timestamp=self.connection.date.strftime("%d/%m/%Y, %H:%M"),
             ip_address=self.connection.ip_address,
@@ -181,7 +181,7 @@ class TestHandleEmailPasswordChanged:
         assert expected_link in sent_msg.body
 
         self.mock_render_template.assert_called_once_with(
-            "email_password_reset.html",
+            "email_password_reset.html.j2",
             username=self.user.username,
             button_link=expected_link
         )
@@ -238,7 +238,7 @@ class TestHandleEmailForgottenPassword:
         link_block = f"http://localhost:5000/security/ban-account/{token_ban}"
 
         self.mock_render_template.assert_called_once_with(
-            "email_forgot_password_template.html",
+            "email_forgot_password_template.html.j2",
             username=self.user.username,
             buttonlink=link,
             button_link_reset=link_block
