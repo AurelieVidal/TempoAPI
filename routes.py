@@ -209,7 +209,8 @@ def reset_password():
 
     return render_template(
         "change_password.html",
-        user_id=user_id
+        user_id=user_id,
+        email=user.email
     ), 200
 
 

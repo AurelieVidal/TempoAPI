@@ -1,5 +1,7 @@
 export async function validatePassword(password, username, email) {
     const errors = [];
+    console.log("?")
+    console.log(email)
 
     if (password.length < 10) {
         errors.push("Le mot de passe doit contenir au moins 10 caractères.");
