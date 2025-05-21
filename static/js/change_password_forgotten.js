@@ -1,6 +1,8 @@
 import {
     validatePassword,
-    getUserInfo,
+    highlightField,
+    resetField,
+    generateStableDeviceId
 } from './password_utils.js';
 
 let cpt = 0;
@@ -78,33 +80,4 @@ async function check_inputs(new_password, confirm_password) {
 
     errorMessage.style.display = "none";
     return true;
-}
-
-
-function highlightField(fieldId, isValid, toggleId = null) {
-    const field = document.getElementById(fieldId);
-    const color = isValid ? "#6568F0" : "#F065A6";
-
-    field.style.border = `2px solid ${color}`;
-    field.style.borderBottom = `7px solid ${color}`;
-    field.style.color = color;
-
-    if (toggleId) {
-        document.getElementById(toggleId).style.color = color;
-    }
-}
-
-function resetField(fieldId, toggleId = null) {
-    highlightField(fieldId, true, toggleId);
-}
-
-function generateStableDeviceId() {
-    const fingerprint = [
-        navigator.platform,
-        navigator.hardwareConcurrency,
-        navigator.deviceMemory || "unknown",
-        screen.width + "x" + screen.height,
-    ].join("||");
-
-    return btoa(fingerprint);
 }

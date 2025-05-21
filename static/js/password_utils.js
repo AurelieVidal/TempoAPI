@@ -109,3 +109,31 @@ async function hashPasswordSHA1(password) {
         .join("")
         .toUpperCase();
 }
+
+export function highlightField(fieldId, isValid, toggleId = null) {
+    const field = document.getElementById(fieldId);
+    const color = isValid ? "#6568F0" : "#F065A6";
+
+    field.style.border = `2px solid ${color}`;
+    field.style.borderBottom = `7px solid ${color}`;
+    field.style.color = color;
+
+    if (toggleId) {
+        document.getElementById(toggleId).style.color = color;
+    }
+}
+
+export function resetField(fieldId, toggleId = null) {
+    highlightField(fieldId, true, toggleId);
+}
+
+export function generateStableDeviceId() {
+    const fingerprint = [
+        navigator.platform,
+        navigator.hardwareConcurrency,
+        navigator.deviceMemory || "unknown",
+        screen.width + "x" + screen.height,
+    ].join("||");
+
+    return btoa(fingerprint);
+}

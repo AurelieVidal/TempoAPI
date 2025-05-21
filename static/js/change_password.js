@@ -1,5 +1,8 @@
 import {
-    validatePassword
+    validatePassword,
+    highlightField,
+    resetField,
+    generateStableDeviceId
 } from './password_utils.js';
 
 let cpt = 0;
@@ -19,12 +22,13 @@ document.addEventListener("DOMContentLoaded", function () {
         event.preventDefault();
 
         const username = document.getElementById("usernameInput").value.trim();
+        const email = document.getElementById("email").value;
         const old_password = document.getElementById("passwordInput").value.trim();
         const new_password = document.getElementById("newPassword").value.trim();
         const confirm_password = document.getElementById("confirmNewPassword").value.trim();
         const user_id = document.getElementById("userId").value;
 
-        let valid_inputs = await check_inputs(username, old_password, new_password, confirm_password);
+        let valid_inputs = await check_inputs(username, old_password, new_password, confirm_password, email);
         if (!valid_inputs) return;
 
         const credentials = btoa(`${username}:${old_password}`);
@@ -121,6 +125,7 @@ async function check_inputs(username, old_password, new_password, confirm_passwo
     resetField("passwordInput", "toggleOldPassword");
     resetField("newPassword", "toggleNewPassword");
     resetField("confirmNewPassword", "toggleConfirmPassword");
+    errorMessage.style.display = "None";
 
     const passwordErrors = await validatePassword(new_password, username, email);
     if (passwordErrors.length > 0) {
@@ -149,33 +154,3 @@ async function check_inputs(username, old_password, new_password, confirm_passwo
     errorMessage.style.display = "none";
     return true;
 }
-
-
-function highlightField(fieldId, isValid, toggleId = null) {
-    const field = document.getElementById(fieldId);
-    const color = isValid ? "#6568F0" : "#F065A6";
-
-    field.style.border = `2px solid ${color}`;
-    field.style.borderBottom = `7px solid ${color}`;
-    field.style.color = color;
-
-    if (toggleId) {
-        document.getElementById(toggleId).style.color = color;
-    }
-}
-
-function resetField(fieldId, toggleId = null) {
-    highlightField(fieldId, true, toggleId);
-}
-
-function generateStableDeviceId() {
-    const fingerprint = [
-        navigator.platform,
-        navigator.hardwareConcurrency,
-        navigator.deviceMemory || "unknown",
-        screen.width + "x" + screen.height,
-    ].join("||");
-
-    return btoa(fingerprint);
-}
-
