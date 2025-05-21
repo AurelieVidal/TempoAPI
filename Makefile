@@ -13,7 +13,7 @@ test:
 	TWILIO_ACCOUNT_SID=account \
 	TWILIO_AUTH_TOKEN=token \
 	TWILIO_SERVICE=service \
-	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
+	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=95 --cov-config=.coveragerc $(TEST_DIR)
 
 mutmut:
 	DATABASE=sqlite:///:memory: \

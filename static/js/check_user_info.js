@@ -1,30 +1,24 @@
+import {
+    isCodeEmpty,
+    handleConfirmationCode,
+} from './sms_utils.js';
+
 document.getElementById("smsForm").addEventListener("submit", function(event) {
     event.preventDefault();
 
     const code = document.getElementById("inputCode").value;
     const user_id = document.getElementById("userId").value;
     const token = document.getElementById("token").value;
-
     const errorMessage = document.getElementById("error-message");
-    if (code === "") {
-        errorMessage.style.display = "block";
-        return;
-    }
-    device_id = generateStableDeviceId()
+
+    if (isCodeEmpty(code, errorMessage)) return;
+
+    const device_id = generateStableDeviceId()
 
     // Check the code with Firebase
-    if (window.confirmationResult) {
-        window.confirmationResult.confirm(code).then(function (result) {
-            const user = result.user;
-            window.location.href = "/checkphone/" + token + "?user_id=" + user_id + "&device_id=" + device_id;
-        }).catch(function (error) {
-            errorMessage.textContent = "Code SMS invalide. Veuillez réessayer.";
-            errorMessage.style.display = "block";
-        });
-    } else {
-        errorMessage.textContent = "Erreur: impossible de vérifier le code. Veuillez réessayer.";
-        errorMessage.style.display = "block";
-    }
+    handleConfirmationCode(code, token, user_id, errorMessage, function() {
+        window.location.href = "/checkphone/" + token + "?user_id=" + user_id + "&device_id=" + device_id;
+    });
 
 });
 

@@ -1,30 +1,22 @@
+import {
+    isCodeEmpty,
+    handleConfirmationCode,
+} from './sms_utils.js';
+
 document.getElementById("smsForm").addEventListener("submit", function(event) {
     event.preventDefault();
 
     const code = document.getElementById("inputCode").value;
     const token = document.getElementById("token").value;
     const user_id = document.getElementById("userId").value;
-
     const errorMessage = document.getElementById("error-message");
-    if (code === "") {
-        errorMessage.style.display = "block";
-        return;
-    }
+
+    if (isCodeEmpty(code, errorMessage)) return;
 
     // Check the code with Firebase
-    if (window.confirmationResult) {
-        window.confirmationResult.confirm(code).then(function (result) {
-            const user = result.user;
-            errorMessage.style.display = "none";
-            window.location.href = "/checkphone/forgotten-password?user_id=" + user_id + "&token=" + token;
-        }).catch(function (error) {
-            errorMessage.textContent = "Code SMS invalide. Veuillez réessayer.";
-            errorMessage.style.display = "block";
-        });
-    } else {
-        errorMessage.textContent = "Erreur: impossible de vérifier le code. Veuillez réessayer.";
-        errorMessage.style.display = "block";
-    }
+    handleConfirmationCode(code, token, user_id, errorMessage, function() {
+        window.location.href = "/checkphone/forgotten-password?user_id=" + user_id + "&token=" + token;
+    });
 });
 
 document.getElementById("resend_button").addEventListener("click", function(event) {
