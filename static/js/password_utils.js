@@ -22,7 +22,7 @@ export async function validatePassword(password, username, email) {
         }
     }
 
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
         errors.push("Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre.");
     }
 
@@ -90,12 +90,13 @@ async function isPasswordPwned(password) {
 
         const data = await response.text();
         const found = data.split("\n").some(line => {
-            const [hashSuffix, count] = line.trim().split(":");
+            const hashSuffix = line.trim().split(":")[0];
             return hashSuffix.toUpperCase() === suffix.toUpperCase();
         });
 
         return { pwned: found };
     } catch (err) {
+        console.log(err)
         return { error: "Impossible de vérifier la sécurité du mot de passe." };
     }
 }
@@ -129,7 +130,7 @@ export function resetField(fieldId, toggleId = null) {
 
 export function generateStableDeviceId() {
     const fingerprint = [
-        navigator.platform,
+        navigator.userAgent,
         navigator.hardwareConcurrency,
         navigator.deviceMemory || "unknown",
         screen.width + "x" + screen.height,

@@ -104,83 +104,85 @@ def before_request():
     route = route.replace(">", "}")
     route = f"{request.method} {route}"
 
-    if route in SECURE_PATHS:
-        auth_header = request.headers.get("Authorization")
-        username = base64.b64decode(auth_header.split(" ")[1]).decode("utf-8").split(":", 1)[0]
-        user = tempo_core.user.get_instance_by_key(username=username)
+    if route not in SECURE_PATHS:
+        return
 
-        if user.status == StatusEnum.BANNED:
-            return {
-                "message": f"User {username} is banned. "
-                           "To reactivate the account please contact admin support "
-                           "at t26159970@gmail.com"
-            }, 403
+    auth_header = request.headers.get("Authorization")
+    username = base64.b64decode(auth_header.split(" ")[1]).decode("utf-8").split(":", 1)[0]
+    user = tempo_core.user.get_instance_by_key(username=username)
 
-        user_ip = request.remote_addr
+    if user.status == StatusEnum.BANNED:
+        return {
+            "message": f"User {username} is banned. "
+                       "To reactivate the account please contact admin support "
+                       "at t26159970@gmail.com"
+        }, 403
 
-        if not request.headers.get("Device"):
-            return {
-                "message": "Unable to authenticate, missing header : -H 'device: xxx'"
-            }, 403
+    user_ip = request.remote_addr
 
-        device = request.headers.get("Device")
+    if not request.headers.get("Device"):
+        return {
+            "message": "Unable to authenticate, missing header : -H 'device: xxx'"
+        }, 403
 
-        is_suspicious = check_is_suspicious(user, device, user_ip)
-        last_conn = tempo_core.connection.get_list_by_key(
-            order_by=Connection.date,
-            limit=1,
-            order="desc",
-            user_id=user.id
-        )
+    device = request.headers.get("Device")
 
-        if not last_conn:
-            user_devices = json.loads(user.devices)
-            user_devices.append(device)
-            tempo_core.user.update(user.id, devices=json.dumps(user_devices))
-            is_suspicious = False
-        else:
-            last_conn = last_conn[0]
+    is_suspicious = check_is_suspicious(user, device, user_ip)
+    last_conn = tempo_core.connection.get_list_by_key(
+        order_by=Connection.date,
+        limit=1,
+        order="desc",
+        user_id=user.id
+    )
 
-        if is_suspicious:
-            if (
-                    last_conn.status == ConnectionStatusEnum.SUSPICIOUS
-                    and datetime.now() - last_conn.date < timedelta(minutes=5)
-            ):
-                output = json.loads(last_conn.output)
-                output["validation_id"] = last_conn.id
-                return output, 401
+    if not last_conn:
+        user_devices = json.loads(user.devices)
+        user_devices.append(device)
+        tempo_core.user.update(user.id, devices=json.dumps(user_devices))
+        is_suspicious = False
+    else:
+        last_conn = last_conn[0]
 
-            user_question = random.choice(user.questions)
-            msg = {
-                "message": "suspicious connexion",
-                "question": user_question.question.question
-            }
+    if is_suspicious:
+        if (
+                last_conn.status == ConnectionStatusEnum.SUSPICIOUS
+                and datetime.now() - last_conn.date < timedelta(minutes=5)
+        ):
+            output = json.loads(last_conn.output)
+            output["validation_id"] = last_conn.id
+            return output, 401
 
-            connection = tempo_core.connection.create(
-                user_id=user.id,
-                date=datetime.now(),
-                device=device,
-                ip_address=user_ip,
-                status=ConnectionStatusEnum.SUSPICIOUS,
-                output=json.dumps(msg, ensure_ascii=False)
-            )
+        user_question = random.choice(user.questions)
+        msg = {
+            "message": "suspicious connexion",
+            "question": user_question.question.question
+        }
 
-            msg["validation_id"] = connection.id
-
-            # Send alert
-            try:
-                handle_email_suspicious_connection(user=user, connection=connection)
-            except (smtplib.SMTPException, KeyError) as e:
-                return {
-                    "message": f"Erreur lors de l'envoi de l'email : {e.__class__.__name__}"
-                }, 500
-
-            return msg, 401
-
-        tempo_core.connection.create(
+        connection = tempo_core.connection.create(
             user_id=user.id,
             date=datetime.now(),
             device=device,
             ip_address=user_ip,
-            status=ConnectionStatusEnum.SUCCESS
+            status=ConnectionStatusEnum.SUSPICIOUS,
+            output=json.dumps(msg, ensure_ascii=False)
         )
+
+        msg["validation_id"] = connection.id
+
+        # Send alert
+        try:
+            handle_email_suspicious_connection(user=user, connection=connection)
+        except (smtplib.SMTPException, KeyError):
+            return {
+                "message": "Erreur lors de l'envoi de l'email"
+            }, 500
+
+        return msg, 401
+
+    tempo_core.connection.create(
+        user_id=user.id,
+        date=datetime.now(),
+        device=device,
+        ip_address=user_ip,
+        status=ConnectionStatusEnum.SUCCESS
+    )

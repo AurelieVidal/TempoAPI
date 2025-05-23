@@ -53,6 +53,7 @@ document.getElementById("validate_answer").addEventListener("click", async funct
                 break;
         }
     } catch (error) {
+        console.log(`Exception while doing something: ${error}`);
         document.getElementById("error-message").textContent = "Impossible de contacter le serveur.";
         window.location.href = "/redirect/ERROR";
     }

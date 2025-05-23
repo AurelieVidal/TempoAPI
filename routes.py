@@ -16,6 +16,11 @@ from utils.utils import (generate_confirmation_token, handle_email_create_user,
 
 routes = Blueprint('routes', __name__)
 
+ERROR_TEMPLATE = "error_template.html"
+INVALID_TOKEN_TEMPLATE = "invalid_token_template.html"
+EMAIL_RESEND_TEMPLATE = "email_resend_template.html"
+USER_BANNED_TEMPLATE = "user_banned_template.html"
+
 
 @routes.route('/checkmail/<token>')
 def check_mail(token):
@@ -42,7 +47,7 @@ def check_mail(token):
 
     # If the user is already validated or doesn't have an appropriate status
     else:
-        return render_template("error_template.html")
+        return render_template(ERROR_TEMPLATE)
 
     # If email has been validated
     if email:
@@ -59,7 +64,7 @@ def check_mail(token):
     # In case the token is not valid anymore
     action = f"/security/resend-email/{ username }"
     return render_template(
-        "invalid_token_template.html",
+        INVALID_TOKEN_TEMPLATE,
         username={username},
         action=action
     )
@@ -81,7 +86,7 @@ def check_phone(token):
     if not email:
         action = f"/security/resend-email/{user.username}"
         return render_template(
-            "invalid_token_template.html",
+            INVALID_TOKEN_TEMPLATE,
             username={user.username},
             action=action
         )
@@ -122,21 +127,21 @@ def resend_email(username):
     """
     user = tempo_core.user.get_instance_by_key(username=username)
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     token = session.get('email_token')
 
     if not token:
-        return render_template("email_resend_template.html"), 401
+        return render_template(EMAIL_RESEND_TEMPLATE), 401
 
     session.pop('email_token', None)
 
     try:
         handle_email_create_user(user_email=user.email, username=username, user_id=user.id)
     except (smtplib.SMTPException, KeyError):
-        return render_template("error_template.html"), 500
+        return render_template(ERROR_TEMPLATE), 500
 
-    return render_template("email_resend_template.html"), 202
+    return render_template(EMAIL_RESEND_TEMPLATE), 202
 
 
 @routes.route('/checkanswer', methods=['GET'])
@@ -151,7 +156,7 @@ def check_answer():
     conn = tempo_core.connection.get_by_id(conn_id)
 
     if not conn:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     output = json.loads(conn.output)
 
@@ -160,10 +165,10 @@ def check_answer():
 
     user = tempo_core.user.get_instance_by_key(username=username)
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     if user.status == StatusEnum.BANNED:
-        return render_template("user_banned_template.html")
+        return render_template(USER_BANNED_TEMPLATE)
 
     return render_template(
         "answer_question_template.html",
@@ -184,12 +189,12 @@ def return_template(status):
         return render_template("connection_validated_template.html")
 
     if status == "BANNED":
-        return render_template("user_banned_template.html")
+        return render_template(USER_BANNED_TEMPLATE)
 
     if status == "PASSWORD_CHANGED":
         return render_template("password_validated_template.html")
 
-    return render_template("error_template.html")
+    return render_template(ERROR_TEMPLATE)
 
 
 @routes.route('/password', methods=['GET'])
@@ -202,10 +207,10 @@ def reset_password():
 
     user = tempo_core.user.get_by_id(user_id)
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     if user.status == StatusEnum.BANNED:
-        return render_template("user_banned_template.html")
+        return render_template(USER_BANNED_TEMPLATE)
 
     return render_template(
         "change_password.html",
@@ -223,15 +228,15 @@ def ban_account(token):
 
         user = tempo_core.user.get_instance_by_key(username=username)
         if not user:
-            return render_template("error_template.html"), 404
+            return render_template(ERROR_TEMPLATE), 404
 
         tempo_core.user.update(user.id, status=StatusEnum.BANNED)
         return render_template("banned_account_template.html")
 
     except SignatureExpired:
-        return render_template("error_template.html"), 400
+        return render_template(ERROR_TEMPLATE), 400
     except BadSignature:
-        return render_template("error_template.html"), 400
+        return render_template(ERROR_TEMPLATE), 400
 
 
 @routes.route('/checkmail/forgotten-password/<token>')
@@ -245,7 +250,7 @@ def check_mail_forgotten_password(token):
     user = tempo_core.user.get_by_id(user_id)
 
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     email = confirm_token(token)
     username = user.username
@@ -266,7 +271,7 @@ def check_mail_forgotten_password(token):
     # In case the token is not valid anymore
     action = f"/security/resend-email/forgotten-password/{ username }"
     return render_template(
-        "invalid_token_template.html",
+        INVALID_TOKEN_TEMPLATE,
         username={username},
         action=action
     )
@@ -278,7 +283,7 @@ def resend_phone_code():
 
     user = tempo_core.user.get_by_id(user_id)
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     new_token = generate_confirmation_token(user.email)
 
@@ -300,21 +305,21 @@ def resend_email_forgotten(username):
     """
     user = tempo_core.user.get_instance_by_key(username=username)
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     token = session.get('email_token')
 
     if not token:
-        return render_template("email_resend_template.html"), 401
+        return render_template(EMAIL_RESEND_TEMPLATE), 401
 
     session.pop('email_token', None)
 
     try:
         handle_email_forgotten_password(user=user)
     except (smtplib.SMTPException, KeyError):
-        return render_template("error_template.html"), 500
+        return render_template(ERROR_TEMPLATE), 500
 
-    return render_template("email_resend_template.html"), 202
+    return render_template(EMAIL_RESEND_TEMPLATE), 202
 
 
 @routes.route('/checkphone/forgotten-password')
@@ -331,12 +336,12 @@ def check_phone_forgotten():
     email = confirm_token(token)
 
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     if not email:
         action = f"/security/resend-email/forgotten-password/{user.username}"
         return render_template(
-            "invalid_token_template.html",
+            INVALID_TOKEN_TEMPLATE,
             username={user.username},
             action=action
         )
@@ -365,12 +370,12 @@ def update_password(token):
     email = confirm_token(token)
 
     if not user:
-        return render_template("error_template.html"), 404
+        return render_template(ERROR_TEMPLATE), 404
 
     if not email:
         action = f"/security/resend-email/forgotten-password/{user.username}"
         return render_template(
-            "invalid_token_template.html",
+            INVALID_TOKEN_TEMPLATE,
             username={user.username},
             action=action
         )

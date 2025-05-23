@@ -81,6 +81,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     break;
             }
         } catch (error) {
+            console.log(`Exception while doing something: ${error}`);
             window.location.href = "/redirect/ERROR";
         }
     });

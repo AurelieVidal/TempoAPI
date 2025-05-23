@@ -34,7 +34,7 @@ document.getElementById("resend_button").addEventListener("click", function(even
 
 function generateStableDeviceId() {
     const fingerprint = [
-        navigator.platform,
+        navigator.userAgent,
         navigator.hardwareConcurrency,
         navigator.deviceMemory || "unknown",
         screen.width + "x" + screen.height,

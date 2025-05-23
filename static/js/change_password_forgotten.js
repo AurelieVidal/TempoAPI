@@ -1,8 +1,7 @@
 import {
     validatePassword,
     highlightField,
-    resetField,
-    generateStableDeviceId
+    resetField
 } from './password_utils.js';
 
 let cpt = 0;
