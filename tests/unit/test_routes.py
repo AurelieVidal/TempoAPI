@@ -576,7 +576,8 @@ class TestResetPassword:
             # Then
             self.mock_render_template.assert_called_once_with(
                 "change_password.html",
-                user_id=str(self.user.id)
+                user_id=str(self.user.id),
+                email=self.user.email
             )
 
     def test_reset_password_user_not_found(self, test_app):
