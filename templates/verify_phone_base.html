@@ -43,20 +43,10 @@
     </script>
 
     <script type="module">
-        console.log("HEEEERE")
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyAqJY9muufM0IIi3q5XJ26B46UFZQJiUeo",
-          authDomain: "tempo-6bc72.firebaseapp.com",
-          projectId: "tempo-6bc72",
-          storageBucket: "tempo-6bc72.appspot.com",
-          messagingSenderId: "939183919282",
-          appId: "1:939183919282:web:19fc49966a8ab6b34af9ab",
-          measurementId: "G-9E5NWCV3WG"
-        };
-
+        const firebaseConfig = {{ firebase_config | tojson | safe }}
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 

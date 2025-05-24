@@ -58,7 +58,16 @@ def check_mail(token):
             username={username},
             user_id=user_id,
             phone=user.phone,
-            token=new_token
+            token=new_token,
+            firebase_config={
+                "apiKey": os.getenv("FIREBASE_API_KEY"),
+                "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                "appId": os.getenv("FIREBASE_APP_ID"),
+                "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+            }
         )
 
     # In case the token is not valid anymore
@@ -265,7 +274,16 @@ def check_mail_forgotten_password(token):
             username={username},
             user_id=user_id,
             phone=user.phone,
-            token=new_token
+            token=new_token,
+            firebase_config={
+                "apiKey": os.getenv("FIREBASE_API_KEY"),
+                "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                "appId": os.getenv("FIREBASE_APP_ID"),
+                "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+            }
         )
 
     # In case the token is not valid anymore
@@ -292,7 +310,16 @@ def resend_phone_code():
         username=user.username,
         user_id=user.id,
         phone=user.phone,
-        token=new_token
+        token=new_token,
+        firebase_config={
+            "apiKey": os.getenv("FIREBASE_API_KEY"),
+            "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+            "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+            "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+            "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+            "appId": os.getenv("FIREBASE_APP_ID"),
+            "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+        }
     )
 
 

@@ -10,9 +10,13 @@ test:
 	MAIL_USERNAME=fake@example.com \
 	MAIL_PASSWORD=fakepassword \
 	SESSION_SECRET_KEY=fakesecretkey \
-	TWILIO_ACCOUNT_SID=account \
-	TWILIO_AUTH_TOKEN=token \
-	TWILIO_SERVICE=service \
+	FIREBASE_API_KEY=fakekey \
+	FIREBASE_AUTH_DOMAIN=fakeauth \
+	FIREBASE_PROJECT_ID=fakeproject \
+	FIREBASE_STORAGE_BUCKET=fakebucket \
+	FIREBASE_MESSAGING_SENDER_ID=fakesender \
+	FIREBASE_APP_ID=fakeapp \
+	FIREBASE_MEASUREMENT_ID=fakemeasurement \
 	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=95 --cov-config=.coveragerc $(TEST_DIR)
 
 mutmut:
@@ -20,6 +24,13 @@ mutmut:
 	MAIL_USERNAME=fake@example.com \
 	MAIL_PASSWORD=fakepassword \
 	SESSION_SECRET_KEY=fakesecretkey \
+	FIREBASE_API_KEY=fakekey \
+	FIREBASE_AUTH_DOMAIN=fakeauth \
+	FIREBASE_PROJECT_ID=fakeproject \
+	FIREBASE_STORAGE_BUCKET=fakebucket \
+	FIREBASE_MESSAGING_SENDER_ID=fakesender \
+	FIREBASE_APP_ID=fakeapp \
+	FIREBASE_MEASUREMENT_ID=fakemeasurement \
 	mutmut run
 
 mutmut_results:

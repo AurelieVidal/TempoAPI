@@ -41,7 +41,7 @@ jobs:
         SESSION_SECRET_KEY: "fakesecretkey"
       run: |
         make mutmut
-        if make mutmut_results | grep -q '^survived'; then
+        if make mutmut_results | grep -q ': survived'; then
           echo "❌ Des mutants ont survécu! Renforcez vos tests."
           exit 1
         fi

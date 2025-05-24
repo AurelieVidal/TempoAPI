@@ -69,7 +69,16 @@ class TestCheckMail:
                 username={self.user.username},
                 user_id=str(user_id),
                 phone=self.user.phone,
-                token="abcd"
+                token="abcd",
+                firebase_config={
+                    "apiKey": os.getenv("FIREBASE_API_KEY"),
+                    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                    "appId": os.getenv("FIREBASE_APP_ID"),
+                    "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+                }
             )
 
     def test_check_mail_invalid_token(self, test_app):
@@ -141,7 +150,16 @@ class TestCheckMail:
                 username={self.user.username},
                 user_id=str(self.user.id),
                 phone=self.user.phone,
-                token="token"
+                token="token",
+                firebase_config={
+                    "apiKey": os.getenv("FIREBASE_API_KEY"),
+                    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                    "appId": os.getenv("FIREBASE_APP_ID"),
+                    "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+                }
             )
 
 
@@ -742,7 +760,16 @@ class TestCheckMailForgottenPassword:
                 username={self.user.username},
                 user_id=str(user_id),
                 phone=self.user.phone,
-                token="valid_token"
+                token="valid_token",
+                firebase_config={
+                    "apiKey": os.getenv("FIREBASE_API_KEY"),
+                    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                    "appId": os.getenv("FIREBASE_APP_ID"),
+                    "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+                }
             )
 
     def test_check_mail_forgotten_password_user_not_found(self, test_app):
@@ -832,7 +859,16 @@ class TestResendPhoneCode:
                 username=self.user.username,
                 user_id=user_id,
                 phone=self.user.phone,
-                token="valid_token"
+                token="valid_token",
+                firebase_config={
+                    "apiKey": os.getenv("FIREBASE_API_KEY"),
+                    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+                    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+                    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+                    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+                    "appId": os.getenv("FIREBASE_APP_ID"),
+                    "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+                }
             )
 
     def test_resend_phone_code_user_not_found(self, test_app):

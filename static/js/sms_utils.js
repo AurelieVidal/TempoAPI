@@ -6,7 +6,7 @@ export function isCodeEmpty(code, errorMessageElement) {
     return false;
 }
 
-export                                  function handleConfirmationCode(code, token, user_id, errorMessageElement, onSuccess) {
+export function handleConfirmationCode(code, token, user_id, errorMessageElement, onSuccess) {
     if (window.confirmationResult) {
         window.confirmationResult.confirm(code)
             .then(function (result) {
