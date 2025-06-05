@@ -297,11 +297,8 @@ def reset_password(**kwargs):
         }, 400
 
     # Check roles
-    if RoleEnum.ADMIN in user_roles:
-        allowed_to_update = True
     elif RoleEnum.USER in user_roles:
-        allowed_to_update = int(user_id) == user.id
-        if not allowed_to_update:
+        if int(user_id) != user.id:
             return {
                 "message": f"You don't have the permission to see information of user {user_id}"
             }, 401
@@ -311,11 +308,10 @@ def reset_password(**kwargs):
         }, 401
 
     # Update password and send mail
-    if allowed_to_update:
-        tempo_core.user.update(user.id, password=new_password)
-        handle_email_password_changed(user)
-        return {
-            "message": "The password has been successfully reset"
-            if RoleEnum.USER in user_roles else
-            f"The password of user {user.username} has been successfully reset"
-        }, 200
+    tempo_core.user.update(user.id, password=new_password)
+    handle_email_password_changed(user)
+    return {
+        "message": "The password has been successfully reset"
+        if RoleEnum.USER in user_roles else
+        f"The password of user {user.username} has been successfully reset"
+    }, 200
