@@ -5,14 +5,14 @@ import os
 import smtplib
 from datetime import datetime, timedelta
 from unittest import mock
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from freezegun import freeze_time
 
 from authentication import basic_auth, check_is_suspicious, check_route
-from core.models import (ConnectionStatusEnum, Question, StatusEnum,
-                         UserQuestion, Connection)
+from core.models import (Connection, ConnectionStatusEnum, Question,
+                         StatusEnum, UserQuestion)
 
 
 @pytest.mark.usefixtures("session")

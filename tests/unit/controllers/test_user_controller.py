@@ -2,15 +2,15 @@ import hashlib
 import json
 import os
 import smtplib
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 import pytest
 
 from adapters.hibp_client import HibpClient
-from controllers.user_controller import (generate_substrings,
+from controllers.user_controller import (generate_salt, generate_substrings,
                                          get_user_by_username,
                                          get_user_details, get_user_info,
-                                         get_users, post_users, reset_password, generate_salt)
+                                         get_users, post_users, reset_password)
 from core.models import Question
 from core.models.role import Role, RoleEnum
 from core.models.user import StatusEnum, User
