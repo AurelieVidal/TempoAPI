@@ -31,7 +31,7 @@ def handle_email_create_user(user_email: str, username: str, user_id: int):
         f"merci de t’être inscrit(e) à Tempo ! "
         f"Pour vérifier ton adresse email, clique sur le lien suivant : {link}"
     )
-    print("LINKKK", link)
+
     msg.html = render_template("subscribe_template.html.j2", username=username, button_link=link)
 
     mail.send(msg)

@@ -3,15 +3,16 @@ import hashlib
 import json
 import os
 import smtplib
-from datetime import datetime
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest import mock
+from unittest.mock import patch, MagicMock
 
 import pytest
 from freezegun import freeze_time
 
-from authentication import basic_auth, check_is_suspicious
+from authentication import basic_auth, check_is_suspicious, check_route
 from core.models import (ConnectionStatusEnum, Question, StatusEnum,
-                         UserQuestion)
+                         UserQuestion, Connection)
 
 
 @pytest.mark.usefixtures("session")
@@ -41,6 +42,7 @@ class TestBasicAuth:
         response = basic_auth(username_input, password_input)
 
         # Then
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=username_input)
         assert response == {"sub": username_input}
 
     def test_basic_auth_wrong_input_username(self):
@@ -77,6 +79,7 @@ class TestBasicAuth:
         # Then
         assert not response
 
+    @freeze_time(datetime.now())
     def test_basic_auth_wrong_password(self, user):
         # Given
         username_input = "username"
@@ -87,6 +90,11 @@ class TestBasicAuth:
         response = basic_auth(username_input, password_input)
 
         # Then
+        self.mock_core.connection.create.assert_called_once_with(
+            user_id=user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.FAILED
+        )
         assert not response
 
 
@@ -102,6 +110,7 @@ class TestCheckIsSuspicious:
         connection.date = datetime.now()
         self.connection = connection
 
+    @freeze_time(datetime.now())
     def test_check_is_suspicious(self, user):
         # Given
         self.mock_core.connection.get_list_by_key.side_effect = [
@@ -109,12 +118,27 @@ class TestCheckIsSuspicious:
             []
         ]
         device = json.loads(user.devices)[0]
+        self.connection.date = datetime.now() - timedelta(days=30)
 
         # When
         response = check_is_suspicious(user, device, "0.0.0.0")
 
         # Then
         assert not response
+        first_call_args = self.mock_core.connection.get_list_by_key.call_args_list[0]
+        second_call_args = self.mock_core.connection.get_list_by_key.call_args_list[1]
+        assert first_call_args == mock.call(
+            order_by=Connection.date,
+            limit=1,
+            order="desc",
+            user_id=user.id
+        )
+        assert second_call_args == mock.call(
+            order_by=Connection.date,
+            limit=5,
+            order="desc",
+            user_id=user.id
+        )
 
     def test_check_is_suspicious_first_connection(self, user):
         # Given
@@ -138,16 +162,16 @@ class TestCheckIsSuspicious:
 
         # Then
         assert not response
-        self.mock_core.user.update(user.id, devices=user.devices)
+        self.mock_core.user.update.assert_called_with(user.id, devices='["iphone", "iphone"]')
 
     def test_check_is_suspicious_last_conn_date_one_month(self, user):
         # Given
-        self.connection.date = datetime(2025, 1, 1)
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection],
             []
         ]
         device = json.loads(user.devices)[0]
+        self.connection.date = datetime.now() - timedelta(days=30, hours=10)
 
         # When
         response = check_is_suspicious(user, device, "0.0.0.0")
@@ -183,8 +207,10 @@ class TestCheckIsSuspicious:
         # Then
         assert response
 
+    @freeze_time(datetime.now())
     def test_check_is_suspicious_ip_changed(self, user):
         # Given
+        self.connection.date = datetime.now() - timedelta(minutes=59)
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection],
             []
@@ -196,6 +222,22 @@ class TestCheckIsSuspicious:
 
         # Then
         assert response
+
+    @freeze_time(datetime.now())
+    def test_check_is_suspicious_ip_changed_after_an_hour(self, user):
+        # Given
+        self.connection.date = datetime.now() - timedelta(hours=1)
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection],
+            []
+        ]
+        device = json.loads(user.devices)[0]
+
+        # When
+        response = check_is_suspicious(user, device, "0.0.0.1")
+
+        # Then
+        assert not response
 
 
 @pytest.mark.usefixtures("session")
@@ -218,7 +260,9 @@ class TestBeforeRequest:
         self.mock_core = self.patch_core.start()
         request.addfinalizer(self.patch_core.stop)
 
-        self.patch_paths = patch("authentication.SECURE_PATHS", {"GET /test_func"})
+        self.patch_paths = patch(
+            "authentication.SECURE_PATHS", ["GET /test_func", "GET /test_func/{id}"]
+        )
         self.mock_paths = self.patch_paths.start()
         request.addfinalizer(self.patch_paths.stop)
 
@@ -258,6 +302,17 @@ class TestBeforeRequest:
             ip_address="127.0.0.1",
             status=ConnectionStatusEnum.SUCCESS
         )
+
+    def test_before_request_no_secure_route(self):
+        # When
+        response = self.client.get("/test_fake", headers={
+            "Authorization": self.get_auth_header(),
+            "Device": "iphone"
+        })
+
+        # Then
+        assert response.status_code == 200
+        self.mock_core.connection.create.assert_not_called()
 
     def test_before_request_user_banned(self):
         # Given
@@ -394,3 +449,40 @@ class TestBeforeRequest:
                 "question": self.question.question
             }, ensure_ascii=False)
         )
+
+    def test_check_route(self):
+        # Given
+        mock_request = MagicMock(rule="/test_func")
+
+        # When
+        route = check_route(mock_request, "GET")
+
+        # Then
+        assert route == "GET /test_func"
+
+    def test_check_route_with_arg(self):
+        # Given
+        mock_request = MagicMock(rule="/test_func/<id>")
+
+        # When
+        route = check_route(mock_request, "GET")
+
+        # Then
+        assert route == "GET /test_func/{id}"
+
+    def test_check_route_no_url_rule(self):
+        # When
+        route = check_route(None, "GET")
+
+        # Then
+        assert not route
+
+    def test_check_route_no_secure_route(self):
+        # Given
+        mock_request = MagicMock(rule="/test_fake")
+
+        # When
+        route = check_route(mock_request, "GET")
+
+        # Then
+        assert not route

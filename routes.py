@@ -433,3 +433,9 @@ def update_password(token):
 def test_route():
     """ For test purposes"""
     return {"message": "ok"}, 200
+
+
+@routes.route('/test_fake')
+def test_fake():
+    """ For test purposes"""
+    return {"message": "ok"}, 200

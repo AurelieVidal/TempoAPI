@@ -1,7 +1,8 @@
 import hashlib
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
@@ -120,7 +121,7 @@ class TestRandomList:
 
     def test_get_random_list(self):
         # Given
-        number = 3
+        number = len(self.question_list)
         kwargs = {"number": number}
 
         random_list = [self.question4.to_dict(), self.question2.to_dict(), self.question3.to_dict()]
@@ -140,7 +141,7 @@ class TestRandomList:
 
     def test_get_random_list_invalid_number(self):
         # Given
-        number = 13
+        number = len(self.question_list) + 1
         kwargs = {"number": number}
 
         self.mock_core.question.get_all.return_value = self.question_list
@@ -152,6 +153,7 @@ class TestRandomList:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Length ask is above database length"
         self.mock_core.question.get_all.assert_called_with()
         self.mock_core.question.get_random_questions.assert_not_called()
 
@@ -176,26 +178,6 @@ class TestValidateConnection:
         self.patch_core = patch("controllers.security_controller.tempo_core")
         self.mock_core = self.patch_core.start()
         request.addfinalizer(self.patch_core.stop)
-
-        connection1 = Connection(
-            id=1,
-            user_id=user.id,
-            date=datetime(2025, 5, 1, 10, 0),
-            device="iPhone 13",
-            ip_address="192.168.1.10",
-            output="Login successful",
-            status=ConnectionStatusEnum.VALIDATION_FAILED
-        )
-
-        connection2 = Connection(
-            id=2,
-            user_id=user.id,
-            date=datetime(2025, 5, 2, 14, 30),
-            device="MacBook Pro",
-            ip_address="192.168.1.11",
-            output="Login failed: wrong password",
-            status=ConnectionStatusEnum.VALIDATION_FAILED
-        )
 
         self.connection_main = Connection(
             id=3,
@@ -229,8 +211,6 @@ class TestValidateConnection:
 
         self.connection_main.status = ConnectionStatusEnum.VALIDATION_FAILED
         self.connection_failed_list = [
-            connection1,
-            connection2,
             self.connection_main,
             connection4,
             connection5
@@ -255,9 +235,11 @@ class TestValidateConnection:
         user.questions = [user_question]
         self.user = user
 
+    @freeze_time(datetime.now())
     def test_validate_connection(self):
         # Given
         self.connection_main.output = json.dumps({"question": self.question_text})
+        self.connection_main.date = datetime.now() - timedelta(minutes=5)
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection_main],
             [],
@@ -278,6 +260,17 @@ class TestValidateConnection:
         assert (
             response["message"]
             == "Connection has been validated, you can try to authenticate again."
+        )
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(
+            username=self.user.username
+        )
+        first_call_args = self.mock_core.connection.get_list_by_key.call_args_list[0]
+        assert first_call_args == mock.call(
+            order_by=Connection.date,
+            limit=1,
+            order="desc",
+            id=self.connection_main.id,
+            status=ConnectionStatusEnum.SUSPICIOUS
         )
         self.mock_core.connection.update.assert_called_with(
             self.connection_main.id,
@@ -309,6 +302,14 @@ class TestValidateConnection:
             response["message"]
             == "Connection has been validated, you can try to authenticate again."
         )
+        first_call_args = self.mock_core.connection.get_list_by_key.call_args_list[1]
+        assert first_call_args == mock.call(
+            order_by=Connection.date,
+            limit=1,
+            order="desc",
+            id=self.connection_main.id,
+            status=ConnectionStatusEnum.ASK_FORGOTTEN_PASSWORD
+        )
         self.mock_core.connection.update.assert_called_with(
             self.connection_main.id,
             status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
@@ -337,10 +338,11 @@ class TestValidateConnection:
         assert response["message"] == "validationId is not valid"
         self.mock_core.connection.update.assert_not_called()
 
+    @freeze_time(datetime.now())
     def test_validate_connection_connection_forgot_expired_validation_id(self):
         # Given
         self.connection_main.output = json.dumps({"question": self.question_text})
-        self.connection_main.date = datetime(2022, 5, 4, 17, 45)
+        self.connection_main.date = datetime.now() - timedelta(minutes=5, seconds=1)
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection_main],
             [],
@@ -455,6 +457,49 @@ class TestValidateConnection:
         # Then
         assert status_code == 403
         assert response["message"] == "Provided answer does not match"
+        last_call_args = self.mock_core.connection.get_list_by_key.call_args_list[2]
+        assert last_call_args == mock.call(
+            order_by=Connection.date,
+            limit=3,
+            order="desc",
+            user_id=self.user.id
+        )
+        self.mock_core.connection.create.assert_called_with(
+            user_id=self.user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.VALIDATION_FAILED,
+        )
+
+    @freeze_time(datetime.now())
+    def test_validate_connection_invalid_answer_no_number_last_conn(self):
+        # Given
+        self.connection_main.output = json.dumps({"question": self.question_text})
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection_main],
+            [],
+            []
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        answer = "invalid"
+        kwargs = {
+            "validationId": self.connection_main.id,
+            "username": self.user.username,
+            "answer": answer
+        }
+
+        # When
+        response, status_code = validate_connection(**kwargs)
+
+        # Then
+        assert status_code == 403
+        assert response["message"] == "Provided answer does not match"
+        last_call_args = self.mock_core.connection.get_list_by_key.call_args_list[2]
+        assert last_call_args == mock.call(
+            order_by=Connection.date,
+            limit=3,
+            order="desc",
+            user_id=self.user.id
+        )
         self.mock_core.connection.create.assert_called_with(
             user_id=self.user.id,
             date=datetime.now(),
@@ -465,7 +510,7 @@ class TestValidateConnection:
     def test_validate_connection_max_errors(self):
         # Given
         self.connection_main.output = json.dumps({"question": self.question_text})
-        self.connection_failed_list[4].status = ConnectionStatusEnum.VALIDATION_FAILED
+        self.connection_failed_list[2].status = ConnectionStatusEnum.VALIDATION_FAILED
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection_main],
             [],
@@ -515,7 +560,7 @@ class TestForgottenPassword:
 
         self.user = user
 
-        self.question_text = "What is your favorite color?"
+        self.question_text = "Quel est ton café préféré ?"
         question = Question(id=1, question=self.question_text)
         self.answer = "blue"
 
@@ -532,6 +577,7 @@ class TestForgottenPassword:
         )
         self. user.questions = [user_question]
 
+    @freeze_time(datetime.now())
     def test_forgotten_password(self):
         # Given
         self.mock_core.user.get_instance_by_key.return_value = self.user
@@ -539,7 +585,7 @@ class TestForgottenPassword:
         last_conn = Connection(
             id=99,
             user_id=self.user.id,
-            date=datetime.now(),
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
             device="iPhone",
             ip_address="1.2.3.4",
             output="",
@@ -554,12 +600,20 @@ class TestForgottenPassword:
         # Then
         assert status_code == 200
         assert response["message"] == "Demand validated, an email has been sent to the user"
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=self.user.username)
+        self.mock_core.connection.get_list_by_key.assert_called_once_with(
+            order_by=Connection.date,
+            limit=1,
+            order="desc",
+            user_id=self.user.id
+        )
         self.mock_email.assert_called_once_with(self.user)
 
+    @freeze_time(datetime.now())
     def test_forgotten_password_creates_connection(self):
-        # Given: Aucun historique de connexion valide récent
+        # Given
         self.mock_core.user.get_instance_by_key.return_value = self.user
-        self.mock_core.connection.get_list_by_key.return_value = []  # no last connection
+        self.mock_core.connection.get_list_by_key.return_value = []
 
         mock_create = self.mock_core.connection.create
         mock_create.return_value.id = 123
@@ -581,20 +635,32 @@ class TestForgottenPassword:
         mock_create.assert_called_once()
         call_args = mock_create.call_args[1]
         assert call_args["user_id"] == self.user.id
+        assert call_args["date"] == datetime.now()
         assert call_args["status"] == ConnectionStatusEnum.ASK_FORGOTTEN_PASSWORD
-        assert json.loads(call_args["output"])["question"] == self.question_text
+        output_json = call_args["output"]
+        assert isinstance(output_json, str)
+        assert "Quel est ton café préféré ?" in output_json
+        assert "\\u00e9" not in output_json
 
-    def test_forgotten_password_error_connection_status(self):
+    @freeze_time(datetime.now())
+    @pytest.mark.parametrize(
+        "status",
+        [
+            ConnectionStatusEnum.SUSPICIOUS,
+            ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD,
+        ]
+    )
+    def test_forgotten_password_error_connection_status(self, status):
         # Given
         self.mock_core.user.get_instance_by_key.return_value = self.user
         last_conn = Connection(
             id=99,
             user_id=self.user.id,
-            date=datetime.now(),
+            date=datetime.now() - timedelta(minutes=5),
             device="iPhone",
             ip_address="1.2.3.4",
             output="",
-            status=ConnectionStatusEnum.SUSPICIOUS
+            status=status
         )
         self.mock_core.connection.get_list_by_key.return_value = [last_conn]
 

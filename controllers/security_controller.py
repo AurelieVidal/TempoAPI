@@ -118,14 +118,11 @@ def validate_connection(**kwargs):
             user_id=user.id
         )
 
-        max_failed = False
-        if len(failed_connections) >= 3:
-            max_failed = all(
-                connection.status == ConnectionStatusEnum.VALIDATION_FAILED
-                for connection in failed_connections
-            )
-
-        if max_failed:
+        if (
+                len(failed_connections) >= 3
+                and all(connection.status == ConnectionStatusEnum.VALIDATION_FAILED
+                        for connection in failed_connections)
+        ):
             tempo_core.user.update(user.id, status=StatusEnum.BANNED)
             response_body = {
                 "message": f"Reached max number of tries, user {username} is now banned. "
@@ -199,19 +196,11 @@ def forgotten_password(**kwargs):
     )
 
     # Check if a connection has been validated or not
-    if not last_conn_list:
-        create_conn = True
-    else:
-        last_conn = last_conn_list[0]
-        if (
-                last_conn.status == ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
-                and datetime.now() - last_conn.date < timedelta(minutes=5)
-        ):
-            create_conn = False
-        else:
-            create_conn = True
-
-    if create_conn:
+    if (
+        not last_conn_list
+        or last_conn_list[0].status != ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        or datetime.now() - last_conn_list[0].date >= timedelta(minutes=5)
+    ):
         # Create the connection and return the question
         user_question = random.choice(user.questions)
         msg = {

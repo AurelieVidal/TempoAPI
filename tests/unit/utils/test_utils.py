@@ -27,6 +27,12 @@ class TestHandleEmail:
         self.mock_token = self.patch_token.start()
         request.addfinalizer(self.patch_token.stop)
 
+        self.patch_render_template = patch(
+            "utils.utils.render_template"
+        )
+        self.mock_render_template = self.patch_render_template.start()
+        request.addfinalizer(self.patch_render_template.stop)
+
         os.environ["API_URL"] = "http://localhost:5000"
         os.environ["MAIL_USERNAME"] = "test@example.com"
 
@@ -36,13 +42,18 @@ class TestHandleEmail:
         username = "testuser"
         user_id = 1
         self.mock_token.return_value = "mocked_token"
+        link = f"{os.environ.get('API_URL')}/checkmail/mocked_token?user_id={user_id}"
 
         # When
         handle_email_create_user(user_email, username, user_id)
 
         # Then
         self.mock_token.assert_called_once_with(user_email)
-        self.mock_send.assert_called_once()
+        self.mock_render_template.assert_called_once_with(
+            "subscribe_template.html.j2",
+            username=username,
+            button_link=link
+        )
         sent_msg = self.mock_send.call_args[0][0]
         assert isinstance(sent_msg, Message)
         assert sent_msg.subject == "Confirme ton inscription !"
@@ -129,7 +140,9 @@ class TestHandleEmailSuspiciousConnection:
         assert sent_msg.sender == os.environ["MAIL_USERNAME"]
         assert sent_msg.recipients == [self.user.email]
         assert f"Hello {self.user.username}," in sent_msg.body
-        assert "Nous avons détecté une connexion inhabituelle à ton compte." in sent_msg.body
+        assert ("Nous avons détecté une connexion inhabituelle à ton compte. Pour "
+                "nous assurer de ton identité, nous te demandons de sécuriser ton compte le plus "
+                "rapidement possible.") in sent_msg.body
         self.mock_render_template.assert_called_once_with(
             "suspicious_template.html.j2",
             username=self.user.username,
@@ -172,8 +185,9 @@ class TestHandleEmailPasswordChanged:
         assert sent_msg.sender == os.environ["MAIL_USERNAME"]
         assert sent_msg.recipients == [self.user.email]
         assert f"Hello {self.user.username}" in sent_msg.body
-        assert "mot de passe a bien été modifié" in sent_msg.body
-        assert "bloquer ton compte immédiatement" in sent_msg.body
+        assert ("Ton mot de passe a bien été modifié.\nSi ce changement vient "
+                "de toi, tu n’as rien à faire.\nSi ce n’est pas toi, clique sur le lien suivant "
+                "pour bloquer ton compte immédiatement") in sent_msg.body
 
         serializer = URLSafeTimedSerializer(os.environ["SECRET_KEY"])
         token = serializer.dumps({'username': self.user.username}, salt="ban-account")

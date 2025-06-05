@@ -94,17 +94,24 @@ def check_is_suspicious(user, device, user_ip):
     return False
 
 
+def check_route(url, method):
+    if not url:
+        return
+
+    route = url.rule.replace("<", "{")
+    route = route.replace(">", "}")
+    route = f"{method} {route}"
+
+    if route not in SECURE_PATHS:
+        return
+
+    return route
+
+
 @app.app.before_request
 def before_request():
     """This code will run before every request"""
-    if not request.url_rule:
-        return
-
-    route = request.url_rule.rule.replace("<", "{")
-    route = route.replace(">", "}")
-    route = f"{request.method} {route}"
-
-    if route not in SECURE_PATHS:
+    if not check_route(request.url_rule, request.method):
         return
 
     auth_header = request.headers.get("Authorization")

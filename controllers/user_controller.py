@@ -182,65 +182,39 @@ def check_password(password: str, username: str, email: str):
     - numbers, upper and lower case letters
     - Password not present in the list of compromised passwords (HIBP API)
     """
-    error_message = None
-    status_code = 200
-
-    # Checking password length
     if len(password) < 10:
-        error_message = "Password length should be minimum 10."
-        status_code = 400
+        return {"message": "Password length should be minimum 10."}, 400
 
-    # Checking for series or repetitions
-    results = re.findall(r"(?=([a-z]{3}|[A-Z]{3}|\d{3}))", password)
-    results_series = [
-        match for match in results
-        if (
-            (ord(match[2]) - ord(match[1]) == 1)
-            and (ord(match[1]) - ord(match[0]) == 1)
-        )
-    ]
-    results_repetition = [
-        match for match in results if match[0] == match[1] == match[2]
-    ]
-    if len(results_repetition) > 0:
-        error_message = "You cannot have 3 identical characters in a row."
-        status_code = 400
-    if len(results_series) > 0:
-        error_message = "Sequence longer than 3 characters detected."
-        status_code = 400
+    # Check for 3+ identical characters or series
+    matches = re.findall(r"(?=([a-zA-Z0-9]{3}))", password)
+    for match in matches:
+        if match[0] == match[1] == match[2]:
+            return {"message": "You cannot have 3 identical characters in a row."}, 400
+        if ord(match[2]) - ord(match[1]) == 1 and ord(match[1]) - ord(match[0]) == 1:
+            return {"message": "Sequence longer than 3 characters detected."}, 400
 
     if not (
         any(letter.isdigit() for letter in password)
         and any(letter.isupper() for letter in password)
         and any(letter.islower() for letter in password)
     ):
-        error_message = "Password must have a number, an uppercase letter, and a lowercase letter."
-        status_code = 400
+        return {
+            "message": "Password must have a number, an uppercase letter, and a lowercase letter."
+        }, 400
 
-    # Checking if password contains user information
     for item in get_user_info(username, email):
-        if item in password:
-            error_message = "Password seems to contain personal information."
-            status_code = 400
+        if item and item.lower() in password.lower():
+            return {"message": "Password seems to contain personal information."}, 400
 
-    # Call to HIBP API
-    hashed_password = (
-        hashlib.sha1(password.encode("utf-8"))
-        .hexdigest()
-        .upper()
-    )
-    hash_end = hashed_password[5:]
+    # HIBP check
+    hashed = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = hashed[:5], hashed[5:]
     hibp_client = HibpClient()
-    response = hibp_client.check_breach(hashed_password[0:5])
+    response = hibp_client.check_breach(prefix)
     if not response:
-        error_message = "Password checking feature is unavailable."
-        status_code = 500
-    for line in response:
-        if line.split(":")[0] == hash_end:
-            error_message = "Password is too weak."
-            status_code = 400
-
-    return ({"message": error_message}, status_code) if error_message else None
+        return {"message": "Password checking feature is unavailable."}, 500
+    if any(line.split(":")[0] == suffix for line in response):
+        return {"message": "Password is too weak."}, 400
 
 
 def generate_salt(length=5):
@@ -263,7 +237,7 @@ def get_user_info(username: str, email: str):
     email_second_part = email.split("@")[1].split(".")[0]
 
     username_substring = []
-    if len(username) >= 3:
+    if len(username) >= 4:
         username_substring = generate_substrings(username)
 
     email_info_substring = []

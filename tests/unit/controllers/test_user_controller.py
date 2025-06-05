@@ -1,7 +1,8 @@
 import hashlib
+import json
 import os
 import smtplib
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 import pytest
 
@@ -9,7 +10,7 @@ from adapters.hibp_client import HibpClient
 from controllers.user_controller import (generate_substrings,
                                          get_user_by_username,
                                          get_user_details, get_user_info,
-                                         get_users, post_users, reset_password)
+                                         get_users, post_users, reset_password, generate_salt)
 from core.models import Question
 from core.models.role import Role, RoleEnum
 from core.models.user import StatusEnum, User
@@ -286,15 +287,19 @@ class TestPostUser:
             name=RoleEnum.USER
         )
 
-    def test_post_user(self, user):
+    @patch("controllers.user_controller.generate_salt")
+    def test_post_user(self, mock_salt, user):
         # Given
         kwargs = self.valid_kwargs
+        kwargs["body"]["password"] = "Gu8mpzc336Sab"
         self.mock_core.question.get_by_id.return_value = self.question
         self.mock_core.user.get_instance_by_key.return_value = None
         self.mock_get_user_info.return_value = ["username", "fake"]
         self.mock_hibp.return_value = ["ok"]
         self.mock_core.user.create.return_value = user
         self.mock_core.role.get_instance_by_key.return_value = self.role
+        pepper = os.environ.get("PEPPER")
+        mock_salt.return_value = "abcd"
 
         # When
         response, status_code = post_users(**kwargs)
@@ -311,13 +316,29 @@ class TestPostUser:
             user.email
         )
         self.mock_hibp.assert_called_once()
-        self.mock_core.user.create.assert_called_once()
+        self.mock_core.user.create.assert_called_once_with(
+            username=kwargs.get("body").get("username"),
+            email=kwargs.get("body").get("email"),
+            password=hashlib.sha256(
+                (
+                    pepper + kwargs.get("body").get("password") + "abcd"
+                ).encode("utf-8")).hexdigest().upper(),
+            salt="abcd",
+            devices=json.dumps([kwargs.get("body").get("device")]),
+            status=StatusEnum.CHECKING_EMAIL,
+            phone=kwargs.get("body").get("phone")
+        )
         self.mock_core.role.get_instance_by_key.assert_called_once_with(name=self.role.name)
         self.mock_core.user_role.create.assert_called_once_with(
             user_id=user.id,
             role_id=self.role.id
         )
-        self.mock_core.user_questions.create.assert_called()
+        self.mock_core.user_questions.create.assert_called_with(
+            user_id=user.id,
+            question_id=1,
+            response=hashlib.sha256(
+                (pepper + "answer" + "abcd").encode("utf-8")).hexdigest().upper()
+        )
         self.mock_handle_email.assert_called_once_with(
             user_email=user.email,
             username=user.username,
@@ -336,6 +357,8 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == ("Input error, for each question you have "
+                                       "to provide the questionId and the answer")
         self.mock_core.question.get_by_id.assert_not_called()
 
     def test_post_user_question_wrong_input_response(self):
@@ -379,6 +402,7 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Username is already used"
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
@@ -403,6 +427,7 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Password length should be minimum 10."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
@@ -427,6 +452,7 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "You cannot have 3 identical characters in a row."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
@@ -451,20 +477,25 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Sequence longer than 3 characters detected."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
-    def test_post_user_invalid_password_requirements(self, user):
+    @pytest.mark.parametrize(
+        "password",
+        [
+            "ONLYUPPERCASE",
+            "onlylowercase",
+            "16584236951775",
+            "lower129638532",
+            "lowerUPPER",
+            "UPPER632984621354",
+        ]
+    )
+    def test_post_user_invalid_password_requirements(self, password, user):
         # Given
         kwargs = self.valid_kwargs
-        kwargs["body"]["password"] = generate_password(
-            length=10,
-            use_upper=False,
-            use_lower=True,
-            use_digits=False,
-            allow_repetitions=False,
-            allow_series=False
-        )
+        kwargs["body"]["password"] = password
         self.mock_core.question.get_by_id.return_value = self.question
         self.mock_core.user.get_instance_by_key.return_value = None
 
@@ -475,6 +506,8 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == ("Password must have a number, an uppercase letter, "
+                                       "and a lowercase letter.")
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
 
@@ -501,6 +534,7 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Password seems to contain personal information."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
         self.mock_get_user_info.assert_called_with(
@@ -540,13 +574,16 @@ class TestPostUser:
         assert status_code == 400
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Password is too weak."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
         self.mock_get_user_info.assert_called_with(
             user.username,
             user.email
         )
-        self.mock_hibp.assert_called_once()
+        self.mock_hibp.assert_called_once_with(
+            hashlib.sha1(password.encode("utf-8")).hexdigest().upper()[:5]
+        )
 
     def test_post_user_hibp_error(self, user):
         # Given
@@ -563,6 +600,7 @@ class TestPostUser:
         assert status_code == 500
         assert isinstance(response, dict)
         assert "message" in response
+        assert response["message"] == "Password checking feature is unavailable."
         self.mock_core.question.get_by_id.assert_called_with(self.question.id)
         self.mock_core.user.get_instance_by_key.assert_called_with(username=user.username)
         self.mock_get_user_info.assert_called_with(
@@ -608,6 +646,48 @@ class TestPostUser:
             username=user.username,
             user_id=user.id
         )
+
+    def test_generate_salt(self):
+        # When
+        salt = generate_salt()
+
+        # Then
+        assert len(salt) == 5
+        assert all("A" <= c <= "Z" or "a" <= c <= "z" for c in salt)
+
+    def test_generate_salt_patch_random(self):
+        # When
+        with patch(
+                "controllers.user_controller.random.randint", side_effect=[1, 65, 0, 97]
+        ) as patch_random:
+            salt = generate_salt(length=2)
+
+            # Then
+            expected_calls = [
+                call(0, 1),
+                call(65, 90),
+                call(0, 1),
+                call(97, 122)
+            ]
+            assert patch_random.call_args_list == expected_calls
+
+        assert "A" in salt
+
+    def test_get_user_infos(self):
+
+        # When
+        list_info = get_user_info("user", "great.mail@email.com")
+
+        # Then
+        assert list_info == {"email", "grea", "great", "mail", "user"}
+
+    def test_get_user_infos_short_username(self):
+
+        # When
+        list_info = get_user_info("us", "great.mail@email.com")
+
+        # Then
+        assert list_info == {"email", "grea", "great", "mail"}
 
 
 @pytest.mark.usefixtures("session")
@@ -686,7 +766,7 @@ class TestResetPassword:
         os.environ["PEPPER"] = "pepper"
 
         self.kwargs = {
-            "username": self.user.username,
+            "user": self.user.username,
             "userId": self.user.id,
             "body": {
                 "newPassword": "new_password"
@@ -697,12 +777,21 @@ class TestResetPassword:
         # Given
         self.mock_core.user.get_instance_by_key.return_value = self.user
         self.mock_check_password.return_value = None
+        pepper = os.environ.get("PEPPER")
+        new_password = pepper + "new_password" + self.user.salt
+        new_password = hashlib.sha256(new_password.encode("utf-8")).hexdigest().upper()
 
         # When
         response, status_code = reset_password(**self.kwargs)
 
         # Then
-        self.mock_core.user.update.assert_called_once()
+        self.mock_core.user.update.assert_called_once_with(self.user.id, password=new_password)
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=self.user.username)
+        self.mock_check_password.assert_called_once_with(
+            password="new_password",
+            username=self.user.username,
+            email=self.user.email
+        )
         self.mock_handle_email_password_changed.assert_called_once_with(self.user)
         assert status_code == 200
         assert isinstance(response, dict)
