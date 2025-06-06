@@ -14,3 +14,5 @@ class UserQuestion(db.Model):
         db.ForeignKey('question.id')
     )
     response = db.Column(db.String, nullable=False)
+
+    question = db.relationship('Question', backref='user_questions')

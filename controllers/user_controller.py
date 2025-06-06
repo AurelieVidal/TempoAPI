@@ -9,7 +9,7 @@ from adapters.hibp_client import HibpClient
 from core.models.role import RoleEnum
 from core.models.user import StatusEnum
 from core.tempo_core import tempo_core
-from utils.utils import handle_email
+from utils.utils import handle_email_create_user, handle_email_password_changed
 
 
 def get_users(**kwargs):
@@ -164,7 +164,7 @@ def post_users(**kwargs):
 
     # Send the verification email
     try:
-        handle_email(user_email=email, username=username, user_id=user.id)
+        handle_email_create_user(user_email=email, username=username, user_id=user.id)
     except (smtplib.SMTPException, KeyError) as e:
         return {"message": f"Erreur lors de l'envoi de l'email : {e.__class__.__name__}"}, 500
 
@@ -182,69 +182,39 @@ def check_password(password: str, username: str, email: str):
     - numbers, upper and lower case letters
     - Password not present in the list of compromised passwords (HIBP API)
     """
-    print("IN CHECK PASSWORD")
-    error_message = None
-    status_code = 200
-
-    # Checking password length
     if len(password) < 10:
-        error_message = "Password length should be minimum 10."
-        status_code = 400
-        print("changed")
+        return {"message": "Password length should be minimum 10."}, 400
 
-    # Checking for series or repetitions
-    results = re.findall(r"(?=([a-z]{3}|[A-Z]{3}|\d{3}))", password)
-    results_series = [
-        match for match in results
-        if (
-            (ord(match[2]) - ord(match[1]) == 1)
-            and (ord(match[1]) - ord(match[0]) == 1)
-        )
-    ]
-    results_repetition = [
-        match for match in results if match[0] == match[1] == match[2]
-    ]
-    if len(results_repetition) > 0:
-        error_message = "You cannot have 3 identical characters in a row."
-        status_code = 400
-    if len(results_series) > 0:
-        error_message = "Sequence longer than 3 characters detected."
-        status_code = 400
+    # Check for 3+ identical characters or series
+    matches = re.findall(r"(?=([a-zA-Z0-9]{3}))", password)
+    for match in matches:
+        if match[0] == match[1] == match[2]:
+            return {"message": "You cannot have 3 identical characters in a row."}, 400
+        if ord(match[2]) - ord(match[1]) == 1 and ord(match[1]) - ord(match[0]) == 1:
+            return {"message": "Sequence longer than 3 characters detected."}, 400
 
     if not (
         any(letter.isdigit() for letter in password)
         and any(letter.isupper() for letter in password)
         and any(letter.islower() for letter in password)
     ):
-        error_message = "Password must have a number, an uppercase letter, and a lowercase letter."
-        status_code = 400
+        return {
+            "message": "Password must have a number, an uppercase letter, and a lowercase letter."
+        }, 400
 
-    # Checking if password contains user information
     for item in get_user_info(username, email):
-        if item in password:
-            error_message = "Password seems to contain personal information."
-            status_code = 400
+        if item and item.lower() in password.lower():
+            return {"message": "Password seems to contain personal information."}, 400
 
-    # Call to HIBP API
-    hashed_password = (
-        hashlib.sha1(password.encode("utf-8"))
-        .hexdigest()
-        .upper()
-    )
-    hash_end = hashed_password[5:]
+    # HIBP check
+    hashed = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = hashed[:5], hashed[5:]
     hibp_client = HibpClient()
-    response = hibp_client.check_breach(hashed_password[0:5])
+    response = hibp_client.check_breach(prefix)
     if not response:
-        error_message = "Password checking feature is unavailable."
-        status_code = 500
-    for line in response:
-        if line.split(":")[0] == hash_end:
-            error_message = "Password is too weak."
-            status_code = 400
-    print("message : ", error_message)
-    print("code : ", status_code)
-
-    return ({"message": error_message}, status_code) if error_message else None
+        return {"message": "Password checking feature is unavailable."}, 500
+    if any(line.split(":")[0] == suffix for line in response):
+        return {"message": "Password is too weak."}, 400
 
 
 def generate_salt(length=5):
@@ -266,7 +236,10 @@ def get_user_info(username: str, email: str):
     email_first_part = email.split("@")[0].split(".")
     email_second_part = email.split("@")[1].split(".")[0]
 
-    username_substring = generate_substrings(username)
+    username_substring = []
+    if len(username) >= 4:
+        username_substring = generate_substrings(username)
+
     email_info_substring = []
     for info in email_first_part:
         email_info_substring += generate_substrings(info)
@@ -285,5 +258,59 @@ def generate_substrings(word):
     :param word: string we want the substrings of
     :return: substring with more than 4 letters of the word
     """
-
     return [word[0:j + 1].lower() for j in range(4 - 1, len(word))]
+
+
+def reset_password(**kwargs):
+    """
+    PATCH /users/{userId}
+
+    :param kwargs:
+    :return:
+    """
+    username = kwargs.get("user")
+    user_id = kwargs.get("userId")
+    new_password = kwargs.get("body").get("newPassword")
+
+    user = tempo_core.user.get_instance_by_key(username=username)
+
+    if not user:
+        return {
+            "message": f"User with id {user_id} not found"
+        }, 404
+
+    user_roles = [role.name for role in user.roles]
+
+    # Check the validity of the new password
+    check = check_password(password=new_password, username=user.username, email=user.email)
+    if check is not None:
+        return check
+
+    # Hash the password
+    pepper = os.environ.get("PEPPER")
+    new_password = pepper + new_password + user.salt
+    new_password = hashlib.sha256(new_password.encode("utf-8")).hexdigest().upper()
+
+    if new_password == user.password:
+        return {
+            "message": "You cannot use the same password"
+        }, 400
+
+    # Check roles
+    if RoleEnum.USER in user_roles and int(user_id) != user.id:
+        return {
+            "message": f"You don't have the permission to see information of user {user_id}"
+        }, 401
+    elif RoleEnum.ADMIN not in user_roles and RoleEnum.USER not in user_roles:
+        return {
+            "message": f"User {user_id} does not have the required role to execute this action"
+        }, 401
+
+    # Update password and send mail
+    tempo_core.user.update(user.id, password=new_password)
+    handle_email_password_changed(user)
+    return {
+        "message": "The password has been successfully reset"
+        if RoleEnum.USER in user_roles else
+        f"The password of user {user.username} has been successfully reset"
+    }, 200

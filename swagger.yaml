@@ -142,6 +142,46 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Users
+  /users/{userId}:
+    patch:
+      summary: Reset user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatchBody'
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+          required: true
+          description: ID of the user
+      operationId: controllers.user_controller.reset_password
+      security:
+        - basic: [ ]
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Users
   /security/questions:
     get:
       summary: Get all security questions
@@ -259,6 +299,82 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Security
+  /security/validate-connection/{username}:
+    post:
+      summary: Validate a suspicious connection
+      parameters:
+        - in: path
+          name: username
+          schema:
+            type: string
+          required: true
+          description: Username of the user
+        - in: query
+          name: validationId
+          schema:
+            type: integer
+          required: true
+          description: Validation id given in the authentication error
+        - in: query
+          name: answer
+          schema:
+            type: string
+          required: true
+          description: Answer to the personal question given in the authentication error
+      operationId: controllers.security_controller.validate_connection
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+  /security/forgotten-password/{username}:
+    post:
+      summary: Reset the password of a user
+      parameters:
+        - in: path
+          name: username
+          schema:
+            type: string
+          required: true
+          description: Username of the user
+      operationId: controllers.security_controller.forgotten_password
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
   /health:
     get:
       summary: Check if API is UP
@@ -346,6 +462,14 @@ components:
         status:
           type: string
           example: "READY"
+    UserPatchBody:
+      type: object
+      required:
+        - newPassword
+      properties:
+        newPassword:
+          type: string
+          example: "password"
     UserRequestBody:
       type: object
       required:
@@ -376,16 +500,6 @@ components:
         device:
           type: string
           example: "iphone"
-    UserPatchRequestBody:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-            - "CREATING"
-            - "READY"
-            - "DELETED"
-          example: "READY"
     Question:
       type: object
       properties:

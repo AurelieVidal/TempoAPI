@@ -2,8 +2,6 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Responsive</title>
     <style>
         body {
             font-family: "Kanit", sans-serif;
@@ -12,6 +10,18 @@
             background-color: #f0f0f0;
             width: 100%;
         }
+
+        li {
+            list-style-type: none;
+        }
+
+        p.detail {
+            margin: 5px 0; /* Réduit l'espacement entre les paragraphes */
+            padding: 0;
+            line-height: 1; /* Ajuste l'espacement entre les lignes */
+            color: #500050;
+        }
+
         .maincontainer {
             background-color: #FFF5FE;
             width: 90%; /* Prend 90% de la largeur de l'écran */
@@ -89,6 +99,23 @@
             background-color: #6568F0;
             color: white;
         }
+
+        .button_secure {
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px; /* Ajuste la taille du texte au petit écran */
+            max-font-size: 16px;
+            padding: 10px 20px;
+            border: 2px solid #F065A6;
+            background-color: white;
+            color: #F065A6 !important;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button_secure:hover {
+            background-color: #F065A6;
+            color: white !important;
+        }
         .footer {
             font-size: 12px;
             max-font-size: 12px;
@@ -109,19 +136,8 @@
     </div>
 
     <div class="content">
-        <p class="title">Confirme ton inscription !</p>
-        <p>Hello {{ username }}, <br/><br/>
-            Merci de t’être inscrit(e) à Tempo ! Pour vérifier ton adresse email, clique sur le bouton ci-dessous :
-        </p>
-
-        <div class="buttondiv">
-            <a href="{{  buttonlink }}" class="button">Confirmer mon email</a>
-        </div>
-
-        <p>Si tu n’as pas créé de compte, ignore cet email.<br/>
-            À bientôt sur Tempo !<br/>L’équipe Tempo 😊</p>
+        {% block content %}{% endblock %}
     </div>
-
     <div class="band">
         <span class="square purple small"></span>
         <span class="square pink big"></span>

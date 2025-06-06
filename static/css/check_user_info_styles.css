@@ -8,7 +8,7 @@
 html, body {
     height: 100%;
     width: 100%;
-    overflow: hidden;
+    overflow: auto;
 }
 
 body {
@@ -189,6 +189,19 @@ h2 {
     color: #4E3C75;
     text-align: center;
     padding: 0 4vw;
+    line-height: 1;
+}
+
+h3 {
+    font-style: normal;
+    font-size: 3rem;
+    font-weight: 300;
+    margin-bottom: 3vh;
+    color: #4E3C75;
+    text-align: center;
+    padding: 0 1vw;
+    width: 100%;
+    line-height: 1;
 }
 
 p {
@@ -225,6 +238,10 @@ form {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    width: auto;
+}
+
+#smsForm {
     width: 20vw;
 }
 
@@ -255,11 +272,54 @@ input {
     display: none;
 }
 
+.password-container {
+    margin: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    max-width: 290px;
+}
+
+
+.password-container input {
+    font-family: 'Kanit', sans-serif;
+    font-size: 1.2rem;
+    padding: 1rem;
+    border: 2px solid #6568F0;
+    color: #6568F0;
+    border-radius: 5px;
+    width: 100%;
+    border-bottom: 7px solid #6568F0;
+    margin-bottom: 1rem;
+    padding-right: 3rem; /* Ajoute de l’espace pour l’icône */
+    max-width: 290px; /* Empêche un étirement excessif */
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+
+    transform: translateY(-7px);
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #6568F0;
+    user-select: none;
+}
+
 .error {
     margin-bottom: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #F065A6;
     display: none;
+    max-width: 70%; /* Empêche l'élargissement du conteneur */
+    word-wrap: break-word; /* Force le retour à la ligne */
+    text-align: center; /* Aligne le texte pour un meilleur rendu */
+    white-space: normal; /* Permet le retour à la ligne */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    padding: 0;
 }
 
 br {
@@ -268,7 +328,13 @@ br {
     content: " ";
 }
 
-.resend_phonebutton {
+.label {
+    margin: 0;
+    padding: 0;
+    width: 120%;
+}
+
+.resend_phone_button {
     font-family: 'Kanit', sans-serif;
     font-size: 1.2rem;
     padding: 1rem;
@@ -284,7 +350,7 @@ br {
     inset 4px 4px 8px  #d873ff;
 }
 
-.resend_phonebutton:hover {
+.resend_phone_button:hover {
     box-shadow: none;
 }
 
@@ -293,6 +359,7 @@ br {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    max-width: 400px;
 }
 
 
@@ -303,7 +370,11 @@ br {
         font-size: 4.7rem;
     }
 
-    button, input, p, .resend_phonebutton {
+    h3 {
+        font-size: 2.5rem;
+    }
+
+    button, input, p, .resend_phone_button {
         font-size: 1.1rem;
     }
 }
@@ -311,6 +382,10 @@ br {
 @media (max-width: 900px) {
     h2 {
         font-size: 4.5rem;
+    }
+
+    h3 {
+        font-size: 2.3rem;
     }
 }
 
@@ -323,7 +398,11 @@ br {
         font-size: 4rem;
     }
 
-    button, input, p, .resend_phonebutton{
+    h3 {
+        font-size: 2rem;
+    }
+
+    button, input, p, .resend_phone_button{
         font-size: 1rem;
     }
 
@@ -339,7 +418,12 @@ br {
 @media (max-width: 730px) {
     h2 {
         font-size: 3.5rem;
-        line-height: 4rem;
+        line-height: 2.5rem;
+    }
+
+    h3 {
+        font-size: 1.3rem;
+        font-weight: 400;
     }
 }
 
@@ -360,11 +444,11 @@ br {
         margin-top: 1rem;
     }
 
-    .resend_phonebutton {
+    .resend_phone_button {
         width: auto;
     }
 
-    button, input, .resend_phonebutton {
+    button, input, .resend_phone_button {
         width: 90%;
     }
 
@@ -378,7 +462,7 @@ br {
         font-size: 3rem;
     }
 
-    button, input, p, .resend_phonebutton{
+    button, input, p, .resend_phone_button{
         font-size: 0.9rem;
     }
 
@@ -386,7 +470,7 @@ br {
         font-size: 0.7rem;
     }
 
-    button, input, .resend_phonebutton {
+    button, input, .resend_phone_button {
         width: 90%;
     }
 }

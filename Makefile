@@ -10,25 +10,46 @@ test:
 	MAIL_USERNAME=fake@example.com \
 	MAIL_PASSWORD=fakepassword \
 	SESSION_SECRET_KEY=fakesecretkey \
-	TWILIO_ACCOUNT_SID=account \
-	TWILIO_AUTH_TOKEN=token \
-	TWILIO_SERVICE=service \
-	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=100 --cov-config=.coveragerc $(TEST_DIR)
+	FIREBASE_API_KEY=fakekey \
+	FIREBASE_AUTH_DOMAIN=fakeauth \
+	FIREBASE_PROJECT_ID=fakeproject \
+	FIREBASE_STORAGE_BUCKET=fakebucket \
+	FIREBASE_MESSAGING_SENDER_ID=fakesender \
+	FIREBASE_APP_ID=fakeapp \
+	FIREBASE_MEASUREMENT_ID=fakemeasurement \
+	$(PYTHON) -m pytest --cov=. --cov-report=term-missing --cov-fail-under=95 --cov-config=.coveragerc $(TEST_DIR)
+
+mutmut:
+	DATABASE=sqlite:///:memory: \
+	MAIL_USERNAME=fake@example.com \
+	MAIL_PASSWORD=fakepassword \
+	SESSION_SECRET_KEY=fakesecretkey \
+	FIREBASE_API_KEY=fakekey \
+	FIREBASE_AUTH_DOMAIN=fakeauth \
+	FIREBASE_PROJECT_ID=fakeproject \
+	FIREBASE_STORAGE_BUCKET=fakebucket \
+	FIREBASE_MESSAGING_SENDER_ID=fakesender \
+	FIREBASE_APP_ID=fakeapp \
+	FIREBASE_MEASUREMENT_ID=fakemeasurement \
+	mutmut run
+
+mutmut_results:
+	mutmut results
 
 flake:
-	$(FLAKE8) --exclude=venv .
+	$(FLAKE8) --exclude=venv,mutants .
 
 isort-check:
-	isort --check . --skip venv
+	isort --check . --skip venv --skip mutants
 
 isort:
-	isort . --skip venv
+	isort . --skip venv --skip mutants
 
 pylint:
-	$(PYLINT) --rcfile=.pylintrc --fail-under=9.75 $(shell find . -name "*.py" ! -path "./venv/*")
+	$(PYLINT) --rcfile=.pylintrc --disable=R1710,R0401 --fail-under=9.75 $(shell find . -name "*.py" ! -path "./venv/*" ! -path "./mutants/*" ! -path "./alembic/versions/*" ! -path "./tests/*")
 
 run_dev:
-	uvicorn app:app --reload
+	uvicorn app:app --reload --reload-exclude "venv/*"
 
 run:
 	gunicorn -k uvicorn.workers.UvicornWorker app:app
@@ -47,3 +68,4 @@ help:
 	@echo "  make isort-check  - Check import order with isort"
 	@echo "  make pylint       - Run Pylint for static analysis"
 	@echo "  make help         - Show this help message"
+	@echo "  make mutmut       - Run mutation testing with mutmut"

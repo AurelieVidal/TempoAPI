@@ -117,3 +117,40 @@ class TestGetIListByKey:
 
         # Then
         assert instances == [question]
+
+    def test_get_instance_by_key_order_by(self, session):
+        # Given
+        self.repo = BaseRepository(Question)
+
+        question = Question(id=1, question="What is the capital of France?")
+        session.add(question)
+        session.commit()
+        question2 = Question(id=2, question="What is the capital of Germany?")
+        session.add(question2)
+        session.commit()
+
+        # When
+        instances = self.repo.get_list_by_key(
+            order_by=Question.id,
+            order="desc"
+        )
+
+        # Then
+        assert instances[0].id == question2.id
+
+    def test_get_instance_by_key_limit(self, session):
+        # Given
+        self.repo = BaseRepository(Question)
+
+        question = Question(id=1, question="What is the capital of France?")
+        session.add(question)
+        session.commit()
+        question2 = Question(id=2, question="What is the capital of Germany?")
+        session.add(question2)
+        session.commit()
+
+        # When
+        instances = self.repo.get_list_by_key(limit=1)
+
+        # Then
+        assert len(instances) == 1

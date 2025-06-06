@@ -1,3 +1,4 @@
+from core.services.connection import ConnectionService
 from core.services.health import HealthService
 from core.services.question import QuestionService
 from core.services.role import RoleService
@@ -14,6 +15,7 @@ class TempoCore:
         self.health = HealthService()
         self.role = RoleService()
         self.user_role = UserRoleService()
+        self.connection = ConnectionService()
 
 
 tempo_core = TempoCore()

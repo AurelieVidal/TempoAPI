@@ -1,0 +1,29 @@
+{% extends "base_template.html" %}
+
+{% block title %}Confirmation d'identité{% endblock %}
+
+{% block main %}
+    <h2>Confirme ton indentité</h2>
+    <p>
+        Ta dernière tentative de connexion est consiédée comme suspecte 🧐. Si tu es bien à l'origine
+        de cette connexion, nous te demandons de répondre à cette question de sécurité afin qu'on
+        puisse confirmer ton identité.
+    </p>
+
+    <h3>{{ question }}</h3>
+
+    <div class="input_form">
+        <form id="smsForm">
+            <input type="hidden" id="username" value="{{ username }}" >
+            <input type="hidden" id="validation_id" value="{{ validation_id }}" >
+            <input type="text" id="answer">
+
+            <button type="submit" id="validate_answer">Valider</button>
+        </form>
+        <p class="error" id="error-message"></p>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/answer_question.js') }}"></script>
+{% endblock %}

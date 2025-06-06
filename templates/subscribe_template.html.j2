@@ -1,0 +1,15 @@
+{% extends "base_email.html.j2" %}
+
+{% block content %}
+    <p class="title">Confirme ton inscription !</p>
+        <p>Hello {{ username }}, <br/><br/>
+            Merci de t’être inscrit(e) à Tempo ! Pour vérifier ton adresse email, clique sur le bouton ci-dessous :
+        </p>
+
+        <div class="buttondiv">
+            <a href="{{  button_link }}" class="button">Confirmer mon email</a>
+        </div>
+
+        <p>Si tu n’as pas créé de compte, ignore cet email.<br/>
+            À bientôt sur Tempo !<br/>L’équipe Tempo 😊</p>
+{% endblock %}

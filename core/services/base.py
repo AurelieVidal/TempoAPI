@@ -24,5 +24,11 @@ class BaseService(Generic[T]):
     def get_instance_by_key(self, **filters) -> T | None:
         return self.repository.get_instance_by_key(**filters)
 
-    def get_list_by_key(self, **filters) -> list[T] | None:
-        return self.repository.get_list_by_key(**filters)
+    def get_list_by_key(
+            self,
+            order_by: str = None,
+            limit: int = None,
+            order: str = "asc",
+            **filters
+    ) -> list[T] | None:
+        return self.repository.get_list_by_key(order_by, limit, order, **filters)

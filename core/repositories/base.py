@@ -1,5 +1,7 @@
 from typing import Generic, Type, TypeVar
 
+from sqlalchemy import asc, desc
+
 from app import db
 
 T = TypeVar("T")
@@ -33,5 +35,19 @@ class BaseRepository(Generic[T]):
     def get_instance_by_key(self, **filters) -> T | None:
         return self.model.query.filter_by(**filters).first()
 
-    def get_list_by_key(self, **filters) -> list[T] | None:
-        return self.model.query.filter_by(**filters).all()
+    def get_list_by_key(
+            self,
+            order_by: str = None,
+            limit: int = None,
+            order: str = "asc",
+            **filters
+    ) -> list[T] | None:
+        query = self.model.query.filter_by(**filters)
+
+        if order_by:
+            query = query.order_by(asc(order_by) if order.lower() == "asc" else desc(order_by))
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
