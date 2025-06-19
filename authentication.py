@@ -157,7 +157,7 @@ def before_request():
         ):
             output = json.loads(last_conn.output)
             output["validation_id"] = last_conn.id
-            return output, 401
+            return output, 412
 
         user_question = random.choice(user.questions)
         msg = {
@@ -184,7 +184,7 @@ def before_request():
                 "message": "Erreur lors de l'envoi de l'email"
             }, 500
 
-        return msg, 401
+        return msg, 412
 
     tempo_core.connection.create(
         user_id=user.id,

@@ -385,7 +385,7 @@ class TestBeforeRequest:
         })
 
         # Then
-        assert response.status_code == 401
+        assert response.status_code == 412
         self.mock_handle_email.assert_called_once_with(user=self.user, connection=self.connection)
         self.mock_core.connection.create.assert_called_once_with(
             user_id=self.user.id,
@@ -416,7 +416,7 @@ class TestBeforeRequest:
         })
 
         # Then
-        assert response.status_code == 401
+        assert response.status_code == 412
         self.mock_handle_email.assert_not_called()
         self.mock_core.connection.create.assert_not_called()
 
