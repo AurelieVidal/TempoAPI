@@ -215,7 +215,7 @@ def forgotten_password(**kwargs):
         )
 
         msg["validation_id"] = connection.id
-        return msg, 401
+        return msg, 412
 
     # Everything OK, send the email to resend the connection
     handle_email_forgotten_password(user)
