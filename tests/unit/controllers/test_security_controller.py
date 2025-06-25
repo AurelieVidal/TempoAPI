@@ -624,7 +624,7 @@ class TestForgottenPassword:
         response, status_code = forgotten_password(**kwargs)
 
         # Then
-        assert status_code == 401
+        assert status_code == 412
         assert (
             response["message"]
             == "You need to validate connection by answering a security question"
@@ -673,7 +673,7 @@ class TestForgottenPassword:
         response, status_code = forgotten_password(**kwargs)
 
         # Then
-        assert status_code == 401
+        assert status_code == 412
         assert (
             response["message"]
             == "You need to validate connection by answering a security question"
