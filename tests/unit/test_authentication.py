@@ -329,7 +329,7 @@ class TestBeforeRequest:
         })
 
         # Then
-        assert response.status_code == 403
+        assert response.status_code == 429
         self.mock_core.connection.create.assert_not_called()
 
     def test_before_request_missing_device_header(self):

@@ -129,7 +129,7 @@ def validate_connection(**kwargs):
                            "To reactivate the account please contact "
                            "admin support at t26159970@gmail.com"
             }
-            status_code = 403
+            status_code = 429
         else:
             response_body = {"message": "Provided answer does not match"}
             status_code = 403
@@ -173,7 +173,7 @@ def check_user_status(username):
     if not user:
         return None, {"message": f"User {username} not found"}, 404
     if user.status == StatusEnum.BANNED:
-        return None, {"message": f"User {username} is banned"}, 401
+        return None, {"message": f"User {username} is banned"}, 429
     return user, None, None
 
 
