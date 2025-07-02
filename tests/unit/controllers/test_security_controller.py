@@ -406,7 +406,7 @@ class TestValidateConnection:
         response, status_code = validate_connection(**kwargs)
 
         # Then
-        assert status_code == 401
+        assert status_code == 429
         assert response["message"] == f"User {self.user.username} is banned"
         self.mock_core.connection.update.assert_not_called()
 
@@ -528,7 +528,7 @@ class TestValidateConnection:
         response, status_code = validate_connection(**kwargs)
 
         # Then
-        assert status_code == 403
+        assert status_code == 429
         assert (
             response["message"]
             == f"Reached max number of tries, user {self.user.username} is now banned. "

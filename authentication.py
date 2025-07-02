@@ -123,7 +123,7 @@ def before_request():
             "message": f"User {username} is banned. "
                        "To reactivate the account please contact admin support "
                        "at t26159970@gmail.com"
-        }, 403
+        }, 429
 
     user_ip = request.remote_addr
 
