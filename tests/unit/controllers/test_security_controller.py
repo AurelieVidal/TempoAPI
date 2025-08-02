@@ -9,6 +9,7 @@ import pytest
 from freezegun import freeze_time
 
 from controllers.security_controller import (check_user, forgotten_password,
+                                             get_last_valid_allow_conn,
                                              get_question_by_id, get_questions,
                                              get_random_list,
                                              validate_connection)
@@ -603,7 +604,53 @@ class TestForgottenPassword:
         self.mock_core.user.get_instance_by_key.assert_called_once_with(username=self.user.username)
         self.mock_core.connection.get_list_by_key.assert_called_once_with(
             order_by=Connection.date,
-            limit=1,
+            limit=5,
+            order="desc",
+            user_id=self.user.id
+        )
+        self.mock_email.assert_called_once_with(self.user)
+
+    @freeze_time(datetime.now())
+    def test_forgotten_password_has_failed(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        )
+
+        failed_conn = Connection(
+            id=100,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+        self.mock_core.connection.get_list_by_key.return_value = [
+            failed_conn,
+            failed_conn,
+            last_conn
+        ]
+        kwargs = {"username": self.user.username}
+
+        # When
+        response, status_code = forgotten_password(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert response["message"] == "Demand validated, an email has been sent to the user"
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=self.user.username)
+        self.mock_core.connection.get_list_by_key.assert_called_once_with(
+            order_by=Connection.date,
+            limit=5,
             order="desc",
             user_id=self.user.id
         )
@@ -698,3 +745,73 @@ class TestForgottenPassword:
         # Then
         assert status_code == 404
         assert response["message"] == "User unknown_user not found"
+
+
+class TestGetLastValidAllowConn:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, user):
+        self.user = user
+
+    def test_get_last_valid_conn(self):
+        # Given
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        )
+
+        # When
+        result = get_last_valid_allow_conn([last_conn])
+
+        # Then
+        assert result == last_conn
+
+    def test_get_last_valid_conn_invalid_status(self):
+        # Given
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.SUSPICIOUS
+        )
+
+        # When
+        result = get_last_valid_allow_conn([last_conn])
+
+        # Then
+        assert not result
+
+    def test_get_last_valid_conn_failed_before(self):
+        # Given
+        last_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        )
+
+        failed_conn = Connection(
+            id=99,
+            user_id=self.user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+
+        # When
+        result = get_last_valid_allow_conn([failed_conn, last_conn])
+
+        # Then
+        assert result == last_conn

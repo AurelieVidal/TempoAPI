@@ -190,15 +190,15 @@ def forgotten_password(**kwargs):
 
     last_conn_list = tempo_core.connection.get_list_by_key(
         order_by=Connection.date,
-        limit=1,
+        limit=5,
         order="desc",
         user_id=user.id
     )
+    last_conn = get_last_valid_allow_conn(last_conn_list)
 
     # Check if a connection has been validated or not
     if (
-        not last_conn_list
-        or last_conn_list[0].status != ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
+        not last_conn
         or datetime.now() - last_conn_list[0].date >= timedelta(minutes=5)
     ):
         # Create the connection and return the question
@@ -220,3 +220,14 @@ def forgotten_password(**kwargs):
     # Everything OK, send the email to resend the connection
     handle_email_forgotten_password(user)
     return {"message": "Demand validated, an email has been sent to the user"}, 200
+
+
+def get_last_valid_allow_conn(conns: list[Connection]) -> Connection | None:
+    for conn in conns:
+        if conn.status == ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD:
+            return conn
+        elif conn.status == ConnectionStatusEnum.VALIDATION_FAILED:
+            continue
+        else:
+            return None
+    return None
