@@ -578,21 +578,31 @@ class TestForgottenPassword:
         )
         self. user.questions = [user_question]
 
-    @freeze_time(datetime.now())
-    def test_forgotten_password(self):
-        # Given
-        self.mock_core.user.get_instance_by_key.return_value = self.user
-
-        last_conn = Connection(
+        self.last_conn = Connection(
             id=99,
-            user_id=self.user.id,
+            user_id=user.id,
             date=datetime.now() - timedelta(minutes=4, seconds=30),
             device="iPhone",
             ip_address="1.2.3.4",
             output="",
             status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
         )
-        self.mock_core.connection.get_list_by_key.return_value = [last_conn]
+
+        self.failed_conn = Connection(
+            id=100,
+            user_id=user.id,
+            date=datetime.now() - timedelta(minutes=4, seconds=30),
+            device="iPhone",
+            ip_address="1.2.3.4",
+            output="",
+            status=ConnectionStatusEnum.VALIDATION_FAILED
+        )
+
+    @freeze_time(datetime.now())
+    def test_forgotten_password(self):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_core.connection.get_list_by_key.return_value = [self.last_conn]
         kwargs = {"username": self.user.username}
 
         # When
@@ -615,29 +625,10 @@ class TestForgottenPassword:
         # Given
         self.mock_core.user.get_instance_by_key.return_value = self.user
 
-        last_conn = Connection(
-            id=99,
-            user_id=self.user.id,
-            date=datetime.now() - timedelta(minutes=4, seconds=30),
-            device="iPhone",
-            ip_address="1.2.3.4",
-            output="",
-            status=ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
-        )
-
-        failed_conn = Connection(
-            id=100,
-            user_id=self.user.id,
-            date=datetime.now() - timedelta(minutes=4, seconds=30),
-            device="iPhone",
-            ip_address="1.2.3.4",
-            output="",
-            status=ConnectionStatusEnum.VALIDATION_FAILED
-        )
         self.mock_core.connection.get_list_by_key.return_value = [
-            failed_conn,
-            failed_conn,
-            last_conn
+            self.failed_conn,
+            self.failed_conn,
+            self.last_conn
         ]
         kwargs = {"username": self.user.username}
 
