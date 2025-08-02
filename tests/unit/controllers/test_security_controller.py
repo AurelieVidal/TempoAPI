@@ -599,37 +599,24 @@ class TestForgottenPassword:
         )
 
     @freeze_time(datetime.now())
-    def test_forgotten_password(self):
-        # Given
-        self.mock_core.user.get_instance_by_key.return_value = self.user
-        self.mock_core.connection.get_list_by_key.return_value = [self.last_conn]
-        kwargs = {"username": self.user.username}
-
-        # When
-        response, status_code = forgotten_password(**kwargs)
-
-        # Then
-        assert status_code == 200
-        assert response["message"] == "Demand validated, an email has been sent to the user"
-        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=self.user.username)
-        self.mock_core.connection.get_list_by_key.assert_called_once_with(
-            order_by=Connection.date,
-            limit=5,
-            order="desc",
-            user_id=self.user.id
-        )
-        self.mock_email.assert_called_once_with(self.user)
-
-    @freeze_time(datetime.now())
-    def test_forgotten_password_has_failed(self):
-        # Given
-        self.mock_core.user.get_instance_by_key.return_value = self.user
-
-        self.mock_core.connection.get_list_by_key.return_value = [
-            self.failed_conn,
-            self.failed_conn,
-            self.last_conn
+    @pytest.mark.parametrize(
+        "connections_list",
+        [
+            pytest.param(
+                lambda self: [self.last_conn],
+                id="single_valid_connection"
+            ),
+            pytest.param(
+                lambda self: [self.failed_conn, self.failed_conn, self.last_conn],
+                id="failed_then_valid_connection"
+            ),
         ]
+    )
+    @freeze_time(datetime.now())
+    def test_forgotten_password(self, connections_list):
+        # Given
+        self.mock_core.user.get_instance_by_key.return_value = self.user
+        self.mock_core.connection.get_list_by_key.return_value = connections_list(self)
         kwargs = {"username": self.user.username}
 
         # When
