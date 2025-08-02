@@ -301,7 +301,7 @@ def reset_password(**kwargs):
         return {
             "message": f"You don't have the permission to see information of user {user_id}"
         }, 401
-    elif RoleEnum.ADMIN not in user_roles and RoleEnum.USER not in user_roles:
+    if RoleEnum.ADMIN not in user_roles and RoleEnum.USER not in user_roles:
         return {
             "message": f"User {user_id} does not have the required role to execute this action"
         }, 401

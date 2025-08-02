@@ -226,8 +226,7 @@ def get_last_valid_allow_conn(conns: list[Connection]) -> Connection | None:
     for conn in conns:
         if conn.status == ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD:
             return conn
-        elif conn.status == ConnectionStatusEnum.VALIDATION_FAILED:
+        if conn.status == ConnectionStatusEnum.VALIDATION_FAILED:
             continue
-        else:
-            return None
+        return None
     return None
