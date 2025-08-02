@@ -371,32 +371,6 @@ class TestBeforeRequest:
         )
 
     @freeze_time(datetime.now())
-    def test_before_request_create_success_conn_if_validated_pwd_change(self):
-        # Given
-        self.mock_check.return_value = True
-        self.connection.date = datetime.now() - timedelta(minutes=2)
-        self.connection.status = ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
-        self.mock_core.connection.get_list_by_key.return_value = [self.connection]
-        self.mock_core.user.get_instance_by_key.return_value = self.user
-        self.mock_core.connection.create.return_value = self.connection
-
-        # When
-        response = self.client.get("/test_func", headers={
-            "Authorization": self.get_auth_header(),
-            "Device": "iphone"
-        })
-
-        # Then
-        assert response.status_code == 200
-        self.mock_core.connection.create.assert_called_once_with(
-            user_id=self.user.id,
-            date=datetime.now(),
-            device="iphone",
-            ip_address="127.0.0.1",
-            status=ConnectionStatusEnum.SUCCESS
-        )
-
-    @freeze_time(datetime.now())
     def test_before_request_create_suspicious(self):
         # Given
         self.mock_check.return_value = True

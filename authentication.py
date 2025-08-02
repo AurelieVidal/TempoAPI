@@ -147,11 +147,6 @@ def before_request():
         user_devices.append(device)
         tempo_core.user.update(user.id, devices=json.dumps(user_devices))
         is_suspicious = False
-    elif (
-            last_conn[0].status == ConnectionStatusEnum.ALLOW_FORGOTTEN_PASSWORD
-            and datetime.now() - last_conn[0].date < timedelta(minutes=3)
-    ):
-        is_suspicious = False
     else:
         last_conn = last_conn[0]
 
