@@ -140,7 +140,7 @@ class TestJwtAuth:
         result = jwt_auth(token)
 
         # Then
-        self.mock_core.user.get_instance_by_key.assert_called_once_with("john")
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username="john")
         self.mock_core.connection.create.assert_called_once_with(
             user_id=user.id,
             date=datetime.now(),
