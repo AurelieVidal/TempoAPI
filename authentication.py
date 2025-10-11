@@ -54,7 +54,7 @@ def jwt_auth(token):
         return {"sub": payload.get("username")}
     except jwt.ExpiredSignatureError:
         payload = jwt.decode(token, key, algorithms=["HS256"], options={"verify_exp": False})
-        user = tempo_core.user.get_instance_by_key(payload.get("username"))
+        user = tempo_core.user.get_instance_by_key(username=payload.get("username"))
 
         tempo_core.connection.create(
             user_id=user.id,
@@ -143,7 +143,7 @@ def before_request():
     if auth_type == "Basic":
         username = base64.b64decode(auth_header.split(" ")[1]).decode("utf-8").split(":", 1)[0]
 
-    if auth_type == "Bearer":
+    else:
         username = jwt.decode(
             auth_header.split(" ")[1],
             os.environ["SECRET_KEY"],
