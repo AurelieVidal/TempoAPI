@@ -2,7 +2,11 @@ import hashlib
 import json
 import os
 import random
+import uuid
 from datetime import datetime, timedelta
+
+import jwt
+from flask import g
 
 from core.models import StatusEnum
 from core.models.connection import Connection, ConnectionStatusEnum
@@ -59,11 +63,75 @@ def get_random_list(**kwargs):
     return {"questions": output}, 200
 
 
-def check_user():
+def check_user(**kwargs):
     """
     GET /security/check-user
     """
+    if g.auth_type == "Basic":
+        # Authentication using user / password
+        username = kwargs.get("user")
+        user = tempo_core.user.get_instance_by_key(username=username)
+        key = os.environ["SECRET_KEY"]
+        payload = {
+            'username': username,
+            'exp': datetime.now() + timedelta(minutes=30)
+        }
+        access_token = jwt.encode(payload, key)
+
+        refresh_token = tempo_core.token.create(
+            user_id=user.id,
+            expiration_date=datetime.now() + timedelta(days=10),
+            value=str(uuid.uuid4()),
+            is_active=True
+        )
+
+        return {
+            "message": "User successfully authenticated",
+            "access_token": access_token,
+            "refresh_token": refresh_token.value
+        }, 200
     return {"message": "User successfully authenticated"}, 200
+
+
+def refresh_token(**kwargs):
+    """
+    GET /security/refresh_token
+    """
+    token = kwargs.get("refreshToken")
+    token = tempo_core.token.get_instance_by_key(value=token)
+
+    now = datetime.now()
+
+    if token.expiration_date < now or not token.is_active:
+        tempo_core.token.update(token.id, is_active=False)
+        return {
+            "message": "Provided token is expired or invalid, if you want to get a new token"
+                       " you can use GET /security/check-user with your username and password"
+        }, 401
+
+    payload = {
+        'username': token.user.username,
+        'exp': datetime.now() + timedelta(minutes=30)
+    }
+    key = os.environ["SECRET_KEY"]
+    access_token = jwt.encode(payload, key)
+
+    return_payload = {
+        "access_token": access_token
+    }
+
+    if token.expiration_date - now < timedelta(days=1):
+        # If the refresh token expires in less than 1 day, we send a new one
+        tempo_core.token.update(token.id, is_active=False)
+        new_refresh = tempo_core.token.create(
+            user_id=token.user.id,
+            expiration_date=datetime.now() + timedelta(days=10),
+            value=str(uuid.uuid4()),
+            is_active=True
+        )
+        return_payload["refresh_token"] = new_refresh.value
+
+    return return_payload, 200
 
 
 def validate_connection(**kwargs):

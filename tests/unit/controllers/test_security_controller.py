@@ -1,17 +1,19 @@
 import hashlib
 import json
 import os
+import uuid
 from datetime import datetime, timedelta
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
 from freezegun import freeze_time
 
 from controllers.security_controller import (check_user, forgotten_password,
                                              get_last_valid_allow_conn,
                                              get_question_by_id, get_questions,
-                                             get_random_list,
+                                             get_random_list, refresh_token,
                                              validate_connection)
 from core.models import (Connection, ConnectionStatusEnum, Question,
                          StatusEnum, UserQuestion)
@@ -161,14 +163,174 @@ class TestRandomList:
 
 @pytest.mark.usefixtures("session")
 class TestCheckUser:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request):
+        self.patch_core = patch("controllers.security_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        self.patch_g = patch("controllers.security_controller.g")
+        self.mock_g = self.patch_g.start()
+        request.addfinalizer(self.patch_g.stop)
+
+        self.patch_jwt = patch("controllers.security_controller.jwt")
+        self.mock_jwt = self.patch_jwt.start()
+        request.addfinalizer(self.patch_jwt.stop)
+
+        os.environ["SECRET_KEY"] = "SECRET"
 
     def test_check_user(self):
+        # Given
+        self.mock_g.auth_type = "Bearer"
+
         # When
         response, status_code = check_user()
 
         # Then
         assert status_code == 200
         assert response == {"message": "User successfully authenticated"}
+
+    @freeze_time(datetime.now())
+    def test_check_user_basic_auth(self, user, token):
+        # Given
+        self.mock_g.auth_type = "Basic"
+        self.mock_core.user.get_instance_by_key.return_value = user
+        self.mock_core.token.create.return_value = token
+        kwargs = {
+            "user": user.username
+        }
+
+        # When
+        response, status_code = check_user(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert "access_token" in response
+        assert "refresh_token" in response
+        assert response["message"] == "User successfully authenticated"
+        call_kwargs = self.mock_core.token.create.call_args.kwargs
+        assert call_kwargs["user_id"] == user.id
+        assert call_kwargs["expiration_date"] == datetime.now() + timedelta(days=10)
+        assert isinstance(call_kwargs["value"], str)
+        assert call_kwargs["is_active"]
+        self.mock_core.user.get_instance_by_key.assert_called_once_with(username=user.username)
+        self.mock_jwt.encode.assert_called_once_with({
+            "username": user.username,
+            "exp": datetime.now() + timedelta(minutes=30)
+        }, "SECRET")
+
+
+@pytest.mark.usefixtures("session")
+class TestRefreshToken:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request):
+        self.patch_core = patch("controllers.security_controller.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        os.environ["SECRET_KEY"] = "SECRET"
+
+    @freeze_time(datetime.now())
+    def test_refresh_token_not_expired_now(self, token, user):
+        # Given
+        token.id = 1
+        token.expiration_date = datetime.now()
+        token.is_active = True
+        token.user = user
+        self.mock_core.token.get_instance_by_key.return_value = token
+        kwargs = {"refreshToken": "valid_token_value"}
+
+        # When
+        response, status_code = refresh_token(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert "access_token" in response
+        decoded = jwt.decode(
+            response["access_token"],
+            os.environ["SECRET_KEY"],
+            algorithms=["HS256"]
+        )
+        assert decoded["username"] == user.username
+
+    def test_refresh_token_expired_or_inactive(self, token):
+        # Given
+        token.expiration_date = datetime.now() - timedelta(hours=1)
+        token.is_active = True
+        self.mock_core.token.get_instance_by_key.return_value = token
+
+        kwargs = {"refreshToken": "fake_refresh_token"}
+
+        # When
+        response, status_code = refresh_token(**kwargs)
+
+        # Then
+        assert status_code == 401
+        assert response["message"] == (
+            "Provided token is expired or invalid, if you want to get a new "
+            "token you can use GET /security/check-user with your username "
+            "and password"
+        )
+        self.mock_core.token.update.assert_called_once_with(token.id, is_active=False)
+        self.mock_core.token.get_instance_by_key.assert_called_once_with(value="fake_refresh_token")
+
+    @pytest.mark.parametrize(
+        "duration_hours",
+        [24, 28],
+    )
+    @freeze_time(datetime.now())
+    def test_refresh_token_valid_without_renewal(self, duration_hours, token, user):
+        # Given
+        token.id = 1
+        token.is_active = True
+        token.expiration_date = datetime.now() + timedelta(hours=duration_hours)
+        token.user = user
+        self.mock_core.token.get_instance_by_key.return_value = token
+        kwargs = {"refreshToken": "valid_token_value"}
+
+        # When
+        response, status_code = refresh_token(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert "access_token" in response
+        assert "refresh_token" not in response
+        self.mock_core.token.update.assert_not_called()
+        decoded = jwt.decode(
+            response["access_token"],
+            os.environ["SECRET_KEY"],
+            algorithms=["HS256"]
+        )
+        assert decoded["username"] == user.username
+        timestamp = (datetime.now() + timedelta(minutes=30)).timestamp()
+        assert decoded["exp"] == int(timestamp)
+
+    @freeze_time(datetime.now())
+    def test_refresh_token_valid_and_renewed(self, token, user):
+        # Given
+        token.is_active = True
+        token.user = user
+        token.expiration_date = datetime.now() + timedelta(hours=12)
+        new_token = MagicMock()
+        new_token.value = str(uuid.uuid4())
+        self.mock_core.token.get_instance_by_key.return_value = token
+        self.mock_core.token.create.return_value = new_token
+        kwargs = {"refreshToken": "old_refresh_token"}
+
+        # When
+        response, status_code = refresh_token(**kwargs)
+
+        # Then
+        assert status_code == 200
+        assert "access_token" in response
+        assert "refresh_token" in response
+        assert response["refresh_token"] == new_token.value
+        self.mock_core.token.update.assert_called_once_with(token.id, is_active=False)
+        call_kwargs = self.mock_core.token.create.call_args.kwargs
+        assert call_kwargs["user_id"] == token.user.id
+        assert isinstance(call_kwargs["value"], str)
+        assert call_kwargs["is_active"] is True
+        assert call_kwargs["expiration_date"] == datetime.now() + timedelta(days=10)
 
 
 @pytest.mark.usefixtures("session")

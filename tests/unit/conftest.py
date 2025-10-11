@@ -1,11 +1,12 @@
 import json
+import uuid
 from datetime import datetime
 
 import pytest
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app import app
-from core.models import Connection, ConnectionStatusEnum
+from core.models import Connection, ConnectionStatusEnum, Token
 from core.models.user import StatusEnum, User
 from extensions import db
 
@@ -74,4 +75,15 @@ def connection(user):
         ip_address="0.0.0.0",
         output=json.dumps({"question": "What is the capital of France ?"}),
         status=ConnectionStatusEnum.SUCCESS
+    )
+
+
+@pytest.fixture
+def token(user):
+    return Token(
+        id=1,
+        user_id=user.id,
+        expiration_date=datetime(2025, 1, 1),
+        value=str(uuid.uuid4()),
+        is_active=True
     )

@@ -115,6 +115,7 @@ paths:
       operationId: controllers.user_controller.get_user_details
       security:
         - basic: [ ]
+        - bearerAuth: []
       responses:
         '200':
           description: Details of the user
@@ -161,6 +162,7 @@ paths:
       operationId: controllers.user_controller.reset_password
       security:
         - basic: [ ]
+        - bearerAuth: []
       responses:
         '200':
           description: The user
@@ -278,6 +280,7 @@ paths:
       operationId: controllers.security_controller.check_user
       security:
         - basic: [ ]
+        - bearerAuth: []
       responses:
         '200':
           description: Success message
@@ -322,6 +325,38 @@ paths:
           required: true
           description: Answer to the personal question given in the authentication error
       operationId: controllers.security_controller.validate_connection
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '404':
+          description: Not found error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      tags:
+        - Security
+  /security/refresh_token/:
+    post:
+      summary: To refresh a token
+      parameters:
+        - in: query
+          name: refreshToken
+          schema:
+            type: string
+          required: true
+          description: Current refresh token
+      operationId: controllers.security_controller.refresh_token
       responses:
         '200':
           description: Success message
@@ -407,6 +442,12 @@ components:
       type: http
       scheme: basic
       x-basicInfoFunc: authentication.basic_auth
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-bearerInfoFunc: authentication.jwt_auth
   schemas:
     Error:
       type: object
