@@ -7,10 +7,12 @@ from datetime import datetime, timedelta
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
 from freezegun import freeze_time
 
-from authentication import basic_auth, check_is_suspicious, check_route
+from authentication import (basic_auth, check_is_suspicious, check_route,
+                            jwt_auth)
 from core.models import (Connection, ConnectionStatusEnum, Question,
                          StatusEnum, UserQuestion)
 
@@ -96,6 +98,66 @@ class TestBasicAuth:
             status=ConnectionStatusEnum.FAILED
         )
         assert not response
+
+
+@pytest.mark.usefixtures("session")
+class TestJwtAuth:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, request):
+        self.patch_core = patch("authentication.tempo_core")
+        self.mock_core = self.patch_core.start()
+        request.addfinalizer(self.patch_core.stop)
+
+        os.environ["SECRET_KEY"] = "SECRET"
+        self.key = os.environ["SECRET_KEY"]
+
+    def test_jwt_auth_valid_token(self):
+        # Given
+        payload = {
+            "username": "john",
+            "exp": datetime.now().timestamp() + 3600
+        }
+        token = jwt.encode(payload, self.key)
+
+        # When
+        result = jwt_auth(token)
+
+        # Then
+        assert result == {"sub": "john"}
+
+    @freeze_time(datetime.now())
+    def test_jwt_auth_expired_token(self, user):
+        # Given
+        payload = {
+            "username": "john",
+            "exp": datetime.now().timestamp() - 10
+        }
+        token = jwt.encode(payload, self.key)
+
+        self.mock_core.user.get_instance_by_key.return_value = user
+
+        # When
+        result = jwt_auth(token)
+
+        # Then
+        self.mock_core.user.get_instance_by_key.assert_called_once_with("john")
+        self.mock_core.connection.create.assert_called_once_with(
+            user_id=user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.FAILED
+        )
+        assert result is None
+
+    def test_jwt_auth_invalid_signature(self):
+        # Given
+        payload = {"username": "john", "exp": datetime.now().timestamp() + 100}
+        token = jwt.encode(payload, "WRONG_KEY")
+
+        # When
+        result = jwt_auth(token)
+
+        # Then
+        assert result is None
 
 
 @pytest.mark.usefixtures("session")
@@ -279,17 +341,33 @@ class TestBeforeRequest:
         encoded = base64.b64encode(credentials.encode()).decode()
         return f"Basic {encoded}"
 
+    def get_bearer_header(self, username=None):
+        """Helper pour générer un token JWT"""
+        username = username or self.user.username
+        payload = {
+            "username": username,
+            "exp": datetime.now() + timedelta(minutes=30)
+        }
+        token = jwt.encode(payload, os.environ["SECRET_KEY"])
+        return f"Bearer {token}"
+
+    @pytest.mark.parametrize("auth_type", ["basic", "bearer"])
     @freeze_time(datetime.now())
-    def test_before_request(self):
+    def test_before_request(self, auth_type):
         # Given
         self.mock_core.connection.get_list_by_key.side_effect = [
             [self.connection],
         ]
         self.mock_core.user.get_instance_by_key.return_value = self.user
 
+        if auth_type == "basic":
+            auth_header = self.get_auth_header()
+        else:
+            auth_header = self.get_bearer_header()
+
         # When
         response = self.client.get("/test_func", headers={
-            "Authorization": self.get_auth_header(),
+            "Authorization": auth_header,
             "Device": "iphone"
         })
 
@@ -302,6 +380,23 @@ class TestBeforeRequest:
             ip_address="127.0.0.1",
             status=ConnectionStatusEnum.SUCCESS
         )
+
+    @freeze_time(datetime.now())
+    def test_before_request_user_not_found(self):
+        # Given
+        self.mock_core.connection.get_list_by_key.side_effect = [
+            [self.connection],
+        ]
+        self.mock_core.user.get_instance_by_key.return_value = None
+
+        # When
+        response = self.client.get("/test_func", headers={
+            "Authorization": self.get_auth_header(),
+            "Device": "iphone"
+        })
+
+        # Then
+        assert response.status_code == 404
 
     def test_before_request_no_secure_route(self):
         # When

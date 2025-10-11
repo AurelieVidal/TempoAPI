@@ -6,7 +6,8 @@ import random
 import smtplib
 from datetime import datetime, timedelta
 
-from flask import request
+import jwt
+from flask import g, request
 
 from app import SECURE_PATHS, app
 from core.models import Connection, StatusEnum
@@ -42,6 +43,27 @@ def basic_auth(username, password):
             status=ConnectionStatusEnum.FAILED
         )
     return None
+
+
+def jwt_auth(token):
+    key = os.environ["SECRET_KEY"]
+
+    try:
+        payload = jwt.decode(token, key, algorithms=["HS256"])
+
+        return {"sub": payload.get("username")}
+    except jwt.ExpiredSignatureError:
+        payload = jwt.decode(token, key, algorithms=["HS256"], options={"verify_exp": False})
+        user = tempo_core.user.get_instance_by_key(payload.get("username"))
+
+        tempo_core.connection.create(
+            user_id=user.id,
+            date=datetime.now(),
+            status=ConnectionStatusEnum.FAILED
+        )
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 
 def check_is_suspicious(user, device, user_ip):
@@ -115,8 +137,25 @@ def before_request():
         return
 
     auth_header = request.headers.get("Authorization")
-    username = base64.b64decode(auth_header.split(" ")[1]).decode("utf-8").split(":", 1)[0]
+    auth_type = auth_header.split(" ")[0]
+    g.auth_type = auth_type
+
+    if auth_type == "Basic":
+        username = base64.b64decode(auth_header.split(" ")[1]).decode("utf-8").split(":", 1)[0]
+
+    if auth_type == "Bearer":
+        username = jwt.decode(
+            auth_header.split(" ")[1],
+            os.environ["SECRET_KEY"],
+            algorithms=["HS256"]
+        ).get("username")
+
     user = tempo_core.user.get_instance_by_key(username=username)
+
+    if not user:
+        return {
+            "message": f"User {username} not found."
+        }, 404
 
     if user.status == StatusEnum.BANNED:
         return {
