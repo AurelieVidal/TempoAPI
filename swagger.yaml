@@ -346,7 +346,7 @@ paths:
                 $ref: '#/components/schemas/Error'
       tags:
         - Security
-  /security/refresh_token/:
+  /security/refresh-token/:
     post:
       summary: To refresh a token
       parameters:
